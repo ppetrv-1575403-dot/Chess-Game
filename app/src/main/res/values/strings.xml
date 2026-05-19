@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Chess Master</string>
+    <string name="new_game">Новая игра</string>
+    <string name="undo_move">Отменить ход</string>
+    <string name="white_turn">Ход белых</string>
+    <string name="black_turn">Ход чёрных</string>
+    <string name="check">Шах!</string>
+    <string name="checkmate">Мат!</string>
+    <string name="stalemate">Пат!</string>
+    <string name="white_wins">Белые победили</string>
+    <string name="black_wins">Чёрные победили</string>
+    <string name="draw">Ничья</string>
+    <string name="choose_piece">Выберите фигуру</string>
+</resources>
