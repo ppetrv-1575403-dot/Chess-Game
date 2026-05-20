@@ -1,7 +1,5 @@
 package com.p_soft.chess.domain.model
 
-import com.p_soft.chess.engine.ChessEngine
-
 data class BoardState(
     val pieces: Map<Square, Piece>,
     val currentPlayer: Player,
@@ -16,16 +14,32 @@ data class BoardState(
 ) {
     companion object {
         fun initial(): BoardState {
+            val pieces = mutableMapOf<Square, Piece>()
+
+            // Пешки
+            for (col in 0..7) {
+                pieces[Square(1, col)] = Piece(PieceType.PAWN, Player.WHITE)
+                pieces[Square(6, col)] = Piece(PieceType.PAWN, Player.BLACK)
+            }
+
+            // Фигуры
+            val backRowPieces = listOf(
+                PieceType.ROOK, PieceType.KNIGHT, PieceType.BISHOP, PieceType.QUEEN,
+                PieceType.KING, PieceType.BISHOP, PieceType.KNIGHT, PieceType.ROOK
+            )
+
+            for (col in 0..7) {
+                pieces[Square(0, col)] = Piece(backRowPieces[col], Player.WHITE)
+                pieces[Square(7, col)] = Piece(backRowPieces[col], Player.BLACK)
+            }
+
             return BoardState(
-                pieces = ChessEngine.createInitialBoard(),
+                pieces = pieces,
                 currentPlayer = Player.WHITE
             )
         }
     }
 
-    /**
-     * Конвертировать в GameStatus
-     */
     fun toGameStatus(): GameStatus {
         return when {
             isCheckmate -> GameStatus.CHECKMATE
@@ -34,12 +48,5 @@ data class BoardState(
             moveHistory.isEmpty() -> GameStatus.NOT_STARTED
             else -> GameStatus.ACTIVE
         }
-    }
-
-    /**
-     * Получить статус игры
-     */
-    fun getStatus(): GameStatus {
-        return toGameStatus()
     }
 }

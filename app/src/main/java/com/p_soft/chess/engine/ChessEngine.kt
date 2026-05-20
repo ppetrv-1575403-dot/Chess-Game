@@ -8,383 +8,99 @@ import com.p_soft.chess.domain.model.Piece
 import com.p_soft.chess.domain.model.PieceType
 import com.p_soft.chess.domain.model.Player
 import com.p_soft.chess.domain.model.Square
+import kotlin.collections.get
+import kotlin.collections.iterator
+import kotlin.text.get
 
 class ChessEngine {
 
-    companion object {
-        /**
-         * Создание начальной позиции на доске
-         */
-        fun createInitialBoard(): Map<Square, Piece> {
-            val pieces = mutableMapOf<Square, Piece>()
+    fun getLegalMoves(gameState: GameState, square: Square): List<Move> {
+        val piece = gameState.board[square] ?: return emptyList()
+        if (piece.player != gameState.currentPlayer) return emptyList()
 
-            // Белые пешки
-            for (col in 0..7) {
-                pieces[Square(1, col)] = Piece(PieceType.PAWN, Player.WHITE)
-            }
-
-            // Черные пешки
-            for (col in 0..7) {
-                pieces[Square(6, col)] = Piece(PieceType.PAWN, Player.BLACK)
-            }
-
-            // Фигуры на задних рядах
-            val backRowPieces = listOf(
-                PieceType.ROOK, PieceType.KNIGHT, PieceType.BISHOP, PieceType.QUEEN,
-                PieceType.KING, PieceType.BISHOP, PieceType.KNIGHT, PieceType.ROOK
-            )
-
-            // Белые фигуры (ряд 0)
-            for (col in 0..7) {
-                pieces[Square(0, col)] = Piece(backRowPieces[col], Player.WHITE)
-            }
-
-            // Черные фигуры (ряд 7)
-            for (col in 0..7) {
-                pieces[Square(7, col)] = Piece(backRowPieces[col], Player.BLACK)
-            }
-
-            return pieces
-        }
-
-        /**
-         * Координаты клеток для обозначения
-         */
-        fun getSquareNotation(square: Square): String {
-            val file = ('a' + square.col).toString()
-            val rank = (square.row + 1).toString()
-            return "$file$rank"
-        }
-
-        /**
-         * Создание клетки из шахматной нотации (например "e4")
-         */
-        fun squareFromNotation(notation: String): Square? {
-            if (notation.length != 2) return null
-            val col = notation[0] - 'a'
-            val row = notation[1] - '1'
-            if (col !in 0..7 || row !in 0..7) return null
-            return Square(row, col)
-        }
-    }
-
-    /**
-     * Получить все возможные ходы для фигуры на клетке (без проверки шаха)
-     */
-    fun getRawMoves(board: Map<Square, Piece>, square: Square): List<Move> {
-        val piece = board[square] ?: return emptyList()
-        return getRawMovesForPiece(board, square, piece)
-    }
-
-    /**
-     * Получить легальные ходы (с проверкой шаха)
-     */
-    fun getLegalMoves(board: Map<Square, Piece>, square: Square, currentPlayer: Player): List<Move> {
-        val piece = board[square] ?: return emptyList()
-        if (piece.player != currentPlayer) return emptyList()
-
-        val rawMoves = getRawMovesForPiece(board, square, piece)
+        val rawMoves = getRawMoves(gameState.board, square, piece, gameState.enPassantTarget)
 
         return rawMoves.filter { move ->
-            val newBoard = applyMove(board, move)
-            !isKingInCheck(newBoard, currentPlayer)
+            val newBoard = applyMove(gameState.board, move)
+            !isKingInCheck(newBoard, gameState.currentPlayer)
         }
     }
 
-    /**
-     * Получить легальные ходы для GameState
-     */
-    fun getLegalMovesForGameState(gameState: GameState, square: Square): List<Move> {
-        return getLegalMoves(gameState.board, square, gameState.currentPlayer)
-    }
-
-    /**
-     * Внутренний метод для получения ходов конкретной фигуры
-     */
-    private fun getRawMovesForPiece(board: Map<Square, Piece>, square: Square, piece: Piece): List<Move> {
-        return when (piece.type) {
-            PieceType.PAWN -> getPawnMoves(board, square, piece.player)
-            PieceType.KNIGHT -> getKnightMoves(board, square, piece.player)
-            PieceType.BISHOP -> getBishopMoves(board, square, piece.player)
-            PieceType.ROOK -> getRookMoves(board, square, piece.player)
-            PieceType.QUEEN -> getQueenMoves(board, square, piece.player)
-            PieceType.KING -> getKingMoves(board, square, piece.player)
-        }
-    }
-
-    /**
-     * Ходы пешки
-     */
-    fun getPawnMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
-        val moves = mutableListOf<Move>()
-        val direction = if (player == Player.WHITE) 1 else -1
-        val startRow = if (player == Player.WHITE) 1 else 6
-        val promotionRow = if (player == Player.WHITE) 7 else 0
-
-        // Ход вперед на одну клетку
-        val oneStep = Square(square.row + direction, square.col)
-        if (oneStep.row in 0..7 && oneStep.col in 0..7 && board[oneStep] == null) {
-            if (oneStep.row == promotionRow) {
-                // Превращение пешки
-                addPromotionMoves(moves, square, oneStep)
-            } else {
-                moves.add(Move(square, oneStep))
-            }
-
-            // Ход на две клетки с начальной позиции
-            if (square.row == startRow) {
-                val twoSteps = Square(square.row + 2 * direction, square.col)
-                if (board[twoSteps] == null) {
-                    moves.add(Move(square, twoSteps))
-                }
-            }
+    fun executeMove(state: GameState, move: Move): GameState {
+        val piece = state.board[move.from] ?: return state
+        val capturedPiece = if (move.isEnPassant) {
+            val capturedRow = if (piece.player == Player.WHITE) move.to.row - 1 else move.to.row + 1
+            state.board[Square(capturedRow, move.to.col)]
+        } else {
+            state.board[move.to]
         }
 
-        // Взятие
-        for (colOffset in listOf(-1, 1)) {
-            val captureSquare = Square(square.row + direction, square.col + colOffset)
-            if (captureSquare.row in 0..7 && captureSquare.col in 0..7) {
-                val targetPiece = board[captureSquare]
-                if (targetPiece != null && targetPiece.player != player) {
-                    if (captureSquare.row == promotionRow) {
-                        addPromotionMoves(moves, square, captureSquare)
-                    } else {
-                        moves.add(Move(square, captureSquare))
-                    }
-                }
-            }
+        val newBoard = applyMove(state.board, move)
+        val newPlayer = if (state.currentPlayer == Player.WHITE) Player.BLACK else Player.WHITE
+
+        val isCheck = isKingInCheck(newBoard, newPlayer)
+        val hasLegalMoves = hasAnyLegalMove(newBoard, newPlayer)
+
+        val newStatus = when {
+            isCheck && !hasLegalMoves -> GameStatus.CHECKMATE
+            !isCheck && !hasLegalMoves -> GameStatus.STALEMATE
+            isCheck -> GameStatus.CHECK
+            else -> GameStatus.ACTIVE
         }
 
-        return moves
-    }
+        val newEnPassant = if (piece.type == PieceType.PAWN &&
+            kotlin.math.abs(move.from.row - move.to.row) == 2) {
+            Square((move.from.row + move.to.row) / 2, move.from.col)
+        } else null
 
-    /**
-     * Ходы коня
-     */
-    fun getKnightMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
-        val moves = mutableListOf<Move>()
-        val knightOffsets = listOf(
-            -2 to -1, -2 to 1,
-            -1 to -2, -1 to 2,
-            1 to -2, 1 to 2,
-            2 to -1, 2 to 1
+        val newHalfMoveClock = if (piece.type == PieceType.PAWN || capturedPiece != null) {
+            0
+        } else {
+            state.halfMoveClock + 1
+        }
+
+        return state.copy(
+            board = newBoard,
+            currentPlayer = newPlayer,
+            moveHistory = state.moveHistory + move,
+            status = newStatus,
+            capturedPieces = if (capturedPiece != null) state.capturedPieces + capturedPiece else state.capturedPieces,
+            enPassantTarget = newEnPassant,
+            pendingPromotion = null,
+            moveCount = state.moveCount + 1,
+            halfMoveClock = newHalfMoveClock,
+            fullMoveNumber = if (state.currentPlayer == Player.BLACK) state.fullMoveNumber + 1 else state.fullMoveNumber
         )
-
-        for ((rowOffset, colOffset) in knightOffsets) {
-            val target = Square(square.row + rowOffset, square.col + colOffset)
-            if (target.row in 0..7 && target.col in 0..7) {
-                val targetPiece = board[target]
-                if (targetPiece == null || targetPiece.player != player) {
-                    moves.add(Move(square, target))
-                }
-            }
-        }
-
-        return moves
     }
 
-    /**
-     * Ходы слона
-     */
-    fun getBishopMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
-        return getSlidingMoves(board, square, player, listOf(
-            -1 to -1, -1 to 1,
-            1 to -1, 1 to 1
-        ))
-    }
-
-    /**
-     * Ходы ладьи
-     */
-    fun getRookMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
-        return getSlidingMoves(board, square, player, listOf(
-            -1 to 0, 1 to 0,
-            0 to -1, 0 to 1
-        ))
-    }
-
-    /**
-     * Ходы ферзя
-     */
-    fun getQueenMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
-        return getSlidingMoves(board, square, player, listOf(
-            -1 to -1, -1 to 0, -1 to 1,
-            0 to -1, 0 to 1,
-            1 to -1, 1 to 0, 1 to 1
-        ))
-    }
-
-    /**
-     * Общий метод для скользящих фигур (слон, ладья, ферзь)
-     */
-    fun getSlidingMoves(
-        board: Map<Square, Piece>,
-        square: Square,
-        player: Player,
-        directions: List<Pair<Int, Int>>
-    ): List<Move> {
-        val moves = mutableListOf<Move>()
-
-        for ((rowDir, colDir) in directions) {
-            var currentRow = square.row + rowDir
-            var currentCol = square.col + colDir
-
-            while (currentRow in 0..7 && currentCol in 0..7) {
-                val target = Square(currentRow, currentCol)
-                val targetPiece = board[target]
-
-                if (targetPiece == null) {
-                    moves.add(Move(square, target))
-                } else {
-                    if (targetPiece.player != player) {
-                        moves.add(Move(square, target))
-                    }
-                    break // Дальше идти нельзя - фигура мешает
-                }
-
-                currentRow += rowDir
-                currentCol += colDir
-            }
-        }
-
-        return moves
-    }
-
-    /**
-     * Ходы короля
-     */
-    fun getKingMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
-        val moves = mutableListOf<Move>()
-        val kingOffsets = listOf(
-            -1 to -1, -1 to 0, -1 to 1,
-            0 to -1, 0 to 1,
-            1 to -1, 1 to 0, 1 to 1
-        )
-
-        for ((rowOffset, colOffset) in kingOffsets) {
-            val target = Square(square.row + rowOffset, square.col + colOffset)
-            if (target.row in 0..7 && target.col in 0..7) {
-                val targetPiece = board[target]
-                if (targetPiece == null || targetPiece.player != player) {
-                    moves.add(Move(square, target))
-                }
-            }
-        }
-
-        // Рокировка
-        val piece = board[square] ?: return moves
-        if (!piece.hasMoved && !isKingInCheck(board, player)) {
-            val backRank = if (player == Player.WHITE) 0 else 7
-
-            // Короткая рокировка (Kingside)
-            val kingsideRook = board[Square(backRank, 7)]
-            if (kingsideRook?.type == PieceType.ROOK &&
-                kingsideRook.player == player &&
-                !kingsideRook.hasMoved) {
-
-                if (board[Square(backRank, 5)] == null &&
-                    board[Square(backRank, 6)] == null) {
-
-                    // Проверяем, что король не проходит через битое поле
-                    if (!isSquareAttacked(board, Square(backRank, 5), player) &&
-                        !isSquareAttacked(board, Square(backRank, 6), player)) {
-                        moves.add(Move(square, Square(backRank, 6), isCastling = true))
-                    }
-                }
-            }
-
-            // Длинная рокировка (Queenside)
-            val queensideRook = board[Square(backRank, 0)]
-            if (queensideRook?.type == PieceType.ROOK &&
-                queensideRook.player == player &&
-                !queensideRook.hasMoved) {
-
-                if (board[Square(backRank, 1)] == null &&
-                    board[Square(backRank, 2)] == null &&
-                    board[Square(backRank, 3)] == null) {
-
-                    if (!isSquareAttacked(board, Square(backRank, 2), player) &&
-                        !isSquareAttacked(board, Square(backRank, 3), player)) {
-                        moves.add(Move(square, Square(backRank, 2), isCastling = true))
-                    }
-                }
-            }
-        }
-
-        return moves
-    }
-
-    /**
-     * Применить ход к доске
-     */
     fun applyMove(board: Map<Square, Piece>, move: Move): Map<Square, Piece> {
         val newBoard = board.toMutableMap()
         val piece = newBoard[move.from] ?: return newBoard
 
-        // Обработка рокировки
-        if (move.isCastling) {
-            // Перемещаем короля
-            newBoard[move.to] = piece.copy(hasMoved = true)
-            newBoard.remove(move.from)
-
-            // Перемещаем ладью
-            if (move.to.col == 6) { // Короткая рокировка
-                val rookSquare = Square(move.from.row, 7)
-                val rook = newBoard[rookSquare]
-                newBoard[Square(move.from.row, 5)] = rook!!.copy(hasMoved = true)
-                newBoard.remove(rookSquare)
-            } else { // Длинная рокировка
-                val rookSquare = Square(move.from.row, 0)
-                val rook = newBoard[rookSquare]
-                newBoard[Square(move.from.row, 3)] = rook!!.copy(hasMoved = true)
-                newBoard.remove(rookSquare)
-            }
-            return newBoard
+        when {
+            move.isCastling -> executeCastling(newBoard, piece, move)
+            move.isEnPassant -> executeEnPassant(newBoard, piece, move)
+            move.promotion != null -> executePromotion(newBoard, piece, move)
+            else -> executeNormalMove(newBoard, piece, move)
         }
 
-        // Обработка взятия на проходе
-        if (move.isEnPassant) {
-            val capturedPawnRow = if (piece.player == Player.WHITE) move.to.row - 1 else move.to.row + 1
-            newBoard.remove(Square(capturedPawnRow, move.to.col))
-        }
-
-        // Обработка превращения пешки
-        if (move.promotion != null) {
-            newBoard[move.to] = Piece(move.promotion, piece.player, hasMoved = true)
-        } else {
-            newBoard[move.to] = piece.copy(hasMoved = true)
-        }
-
-        newBoard.remove(move.from)
         return newBoard
     }
 
-    /**
-     * Проверка, находится ли король под шахом
-     */
     fun isKingInCheck(board: Map<Square, Piece>, player: Player): Boolean {
         val kingSquare = board.entries.find {
             it.value.type == PieceType.KING && it.value.player == player
-        }?.key ?: return true // Король не найден - считаем что шах
+        }?.key ?: return true
 
         val opponent = if (player == Player.WHITE) Player.BLACK else Player.WHITE
-        return isSquareAttacked(board, kingSquare, player)
+        return isSquareAttacked(board, kingSquare, opponent)
     }
 
-    /**
-     * Находится ли клетка под атакой противника
-     */
-    fun isSquareAttacked(board: Map<Square, Piece>, square: Square, defenderColor: Player): Boolean {
-        val attackerColor = if (defenderColor == Player.WHITE) Player.BLACK else Player.WHITE
-
-        for ((attackerSquare, piece) in board) {
-            if (piece.player == attackerColor) {
-                val moves = when (piece.type) {
-                    PieceType.PAWN -> getPawnAttackSquares(attackerSquare, attackerColor)
-                    else -> getRawMovesForPiece(board, attackerSquare, piece)
-                }
-
-                if (moves.any { it.to == square }) {
+    fun hasAnyLegalMove(board: Map<Square, Piece>, player: Player): Boolean {
+        for ((square, piece) in board) {
+            if (piece.player == player) {
+                val moves = getRawMoves(board, square, piece, null)
+                if (moves.any { !isKingInCheck(applyMove(board, it), player) }) {
                     return true
                 }
             }
@@ -392,67 +108,6 @@ class ChessEngine {
         return false
     }
 
-    /**
-     * Клетки, которые атакует пешка
-     */
-    private fun getPawnAttackSquares(square: Square, player: Player): List<Move> {
-        val direction = if (player == Player.WHITE) 1 else -1
-        val attacks = mutableListOf<Move>()
-
-        for (colOffset in listOf(-1, 1)) {
-            val target = Square(square.row + direction, square.col + colOffset)
-            if (target.row in 0..7 && target.col in 0..7) {
-                attacks.add(Move(square, target))
-            }
-        }
-
-        return attacks
-    }
-
-    /**
-     * Проверить наличие легальных ходов у игрока
-     */
-    fun hasLegalMoves(board: Map<Square, Piece>, player: Player): Boolean {
-        for ((square, piece) in board) {
-            if (piece.player == player) {
-                val rawMoves = getRawMovesForPiece(board, square, piece)
-                for (move in rawMoves) {
-                    val newBoard = applyMove(board, move)
-                    if (!isKingInCheck(newBoard, player)) {
-                        return true
-                    }
-                }
-            }
-        }
-        return false
-    }
-
-    /**
-     * Проверка на мат
-     */
-    fun isCheckmate(board: Map<Square, Piece>, player: Player): Boolean {
-        return isKingInCheck(board, player) && !hasLegalMoves(board, player)
-    }
-
-    /**
-     * Проверка на пат
-     */
-    fun isStalemate(board: Map<Square, Piece>, player: Player): Boolean {
-        return !isKingInCheck(board, player) && !hasLegalMoves(board, player)
-    }
-
-    /**
-     * Добавление ходов с превращением пешки
-     */
-    private fun addPromotionMoves(moves: MutableList<Move>, from: Square, to: Square) {
-        for (pieceType in listOf(PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT)) {
-            moves.add(Move(from, to, promotion = pieceType))
-        }
-    }
-
-    /**
-     * Конвертация GameState в BoardState
-     */
     fun gameStateToBoardState(gameState: GameState): BoardState {
         return BoardState(
             pieces = gameState.board,
@@ -468,9 +123,6 @@ class ChessEngine {
         )
     }
 
-    /**
-     * Конвертация BoardState в GameState
-     */
     fun boardStateToGameState(boardState: BoardState): GameState {
         return GameState(
             board = boardState.pieces,
@@ -483,4 +135,238 @@ class ChessEngine {
             moveCount = boardState.moveCount
         )
     }
+
+    // Приватные методы
+
+    private fun getRawMoves(
+        board: Map<Square, Piece>,
+        square: Square,
+        piece: Piece,
+        enPassantTarget: Square?
+    ): List<Move> {
+        return when (piece.type) {
+            PieceType.PAWN -> getPawnMoves(board, square, piece.player, enPassantTarget)
+            PieceType.KNIGHT -> getKnightMoves(board, square, piece.player)
+            PieceType.BISHOP -> getBishopMoves(board, square, piece.player)
+            PieceType.ROOK -> getRookMoves(board, square, piece.player)
+            PieceType.QUEEN -> getQueenMoves(board, square, piece.player)
+            PieceType.KING -> getKingMoves(board, square, piece.player)
+        }
+    }
+
+    private fun getPawnMoves(
+        board: Map<Square, Piece>,
+        square: Square,
+        player: Player,
+        enPassantTarget: Square?
+    ): List<Move> {
+        val moves = mutableListOf<Move>()
+        val direction = if (player == Player.WHITE) 1 else -1
+        val startRow = if (player == Player.WHITE) 1 else 6
+        val promotionRow = if (player == Player.WHITE) 7 else 0
+
+        // Ход вперед
+        val oneStep = Square(square.row + direction, square.col)
+        if (oneStep.isValid() && board[oneStep] == null) {
+            addMovesForSquare(moves, square, oneStep, promotionRow)
+
+            val twoStep = Square(square.row + 2 * direction, square.col)
+            if (square.row == startRow && board[twoStep] == null) {
+                moves.add(Move(square, twoStep))
+            }
+        }
+
+        // Взятие
+        for (colOffset in listOf(-1, 1)) {
+            val captureSquare = Square(square.row + direction, square.col + colOffset)
+            if (captureSquare.isValid()) {
+                val targetPiece = board[captureSquare]
+                if (targetPiece != null && targetPiece.player != player) {
+                    addMovesForSquare(moves, square, captureSquare, promotionRow)
+                }
+                if (enPassantTarget == captureSquare) {
+                    moves.add(Move(square, captureSquare, isEnPassant = true))
+                }
+            }
+        }
+
+        return moves
+    }
+
+    private fun getKnightMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
+        val offsets = listOf(-2 to -1, -2 to 1, -1 to -2, -1 to 2, 1 to -2, 1 to 2, 2 to -1, 2 to 1)
+        return getJumpMoves(board, square, player, offsets)
+    }
+
+    private fun getBishopMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
+        return getSlidingMoves(board, square, player, listOf(-1 to -1, -1 to 1, 1 to -1, 1 to 1))
+    }
+
+    private fun getRookMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
+        return getSlidingMoves(board, square, player, listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1))
+    }
+
+    private fun getQueenMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
+        return getSlidingMoves(board, square, player,
+            listOf(-1 to -1, -1 to 0, -1 to 1, 0 to -1, 0 to 1, 1 to -1, 1 to 0, 1 to 1))
+    }
+
+    private fun getKingMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
+        val moves = getJumpMoves(board, square, player,
+            listOf(-1 to -1, -1 to 0, -1 to 1, 0 to -1, 0 to 1, 1 to -1, 1 to 0, 1 to 1))
+
+        // Рокировка
+        val piece = board[square] ?: return moves
+        if (!piece.hasMoved && !isKingInCheck(board, player)) {
+            val backRank = if (player == Player.WHITE) 0 else 7
+
+            // Короткая рокировка
+            if (canCastle(board, player, backRank, 7, listOf(5, 6))) {
+                (moves as MutableList).add(Move(square, Square(backRank, 6), isCastling = true))
+            }
+
+            // Длинная рокировка
+            if (canCastle(board, player, backRank, 0, listOf(1, 2, 3))) {
+                (moves as MutableList).add(Move(square, Square(backRank, 2), isCastling = true))
+            }
+        }
+
+        return moves
+    }
+
+    private fun getJumpMoves(
+        board: Map<Square, Piece>,
+        square: Square,
+        player: Player,
+        offsets: List<Pair<Int, Int>>
+    ): List<Move> {
+        return offsets.mapNotNull { (rowOffset, colOffset) ->
+            val target = Square(square.row + rowOffset, square.col + colOffset)
+            if (target.isValid()) {
+                val targetPiece = board[target]
+                if (targetPiece == null || targetPiece.player != player) {
+                    Move(square, target)
+                } else null
+            } else null
+        }
+    }
+
+    private fun getSlidingMoves(
+        board: Map<Square, Piece>,
+        square: Square,
+        player: Player,
+        directions: List<Pair<Int, Int>>
+    ): List<Move> {
+        val moves = mutableListOf<Move>()
+
+        for ((rowDir, colDir) in directions) {
+            var currentRow = square.row + rowDir
+            var currentCol = square.col + colDir
+
+            while (currentRow in 0..7 && currentCol in 0..7) {
+                val target = Square(currentRow, currentCol)
+                val targetPiece = board[target]
+
+                when {
+                    targetPiece == null -> moves.add(Move(square, target))
+                    targetPiece.player != player -> {
+                        moves.add(Move(square, target))
+                        break
+                    }
+                    else -> break
+                }
+
+                currentRow += rowDir
+                currentCol += colDir
+            }
+        }
+
+        return moves
+    }
+
+    private fun canCastle(
+        board: Map<Square, Piece>,
+        player: Player,
+        rank: Int,
+        rookCol: Int,
+        emptyCols: List<Int>
+    ): Boolean {
+        val rook = board[Square(rank, rookCol)] ?: return false
+        if (rook.type != PieceType.ROOK || rook.hasMoved) return false
+
+        val opponent = if (player == Player.WHITE) Player.BLACK else Player.WHITE
+
+        return emptyCols.all { col ->
+            board[Square(rank, col)] == null && !isSquareAttacked(board, Square(rank, col), opponent)
+        }
+    }
+
+    private fun executeCastling(board: MutableMap<Square, Piece>, piece: Piece, move: Move) {
+        board[move.to] = piece.copy(hasMoved = true)
+        board.remove(move.from)
+
+        val (rookFrom, rookTo) = if (move.to.col == 6) {
+            Square(move.from.row, 7) to Square(move.from.row, 5)
+        } else {
+            Square(move.from.row, 0) to Square(move.from.row, 3)
+        }
+
+        board[rookTo] = board[rookFrom]!!.copy(hasMoved = true)
+        board.remove(rookFrom)
+    }
+
+    private fun executeEnPassant(board: MutableMap<Square, Piece>, piece: Piece, move: Move) {
+        val capturedRow = if (piece.player == Player.WHITE) move.to.row - 1 else move.to.row + 1
+        board.remove(Square(capturedRow, move.to.col))
+        board[move.to] = piece.copy(hasMoved = true)
+        board.remove(move.from)
+    }
+
+    private fun executePromotion(board: MutableMap<Square, Piece>, piece: Piece, move: Move) {
+        board[move.to] = Piece(move.promotion!!, piece.player, hasMoved = true)
+        board.remove(move.from)
+    }
+
+    private fun executeNormalMove(board: MutableMap<Square, Piece>, piece: Piece, move: Move) {
+        board[move.to] = piece.copy(hasMoved = true)
+        board.remove(move.from)
+    }
+
+    private fun isSquareAttacked(board: Map<Square, Piece>, square: Square, attackerColor: Player): Boolean {
+        for ((attackerSquare, piece) in board) {
+            if (piece.player == attackerColor) {
+                val moves = when (piece.type) {
+                    PieceType.PAWN -> getPawnAttacks(attackerSquare, attackerColor)
+                    else -> getRawMoves(board, attackerSquare, piece, null)
+                }
+                if (moves.any { it.to == square }) return true
+            }
+        }
+        return false
+    }
+
+    private fun getPawnAttacks(square: Square, player: Player): List<Move> {
+        val direction = if (player == Player.WHITE) 1 else -1
+        return listOf(-1, 1).mapNotNull { colOffset ->
+            val target = Square(square.row + direction, square.col + colOffset)
+            if (target.isValid()) Move(square, target) else null
+        }
+    }
+
+    private fun addMovesForSquare(
+        moves: MutableList<Move>,
+        from: Square,
+        to: Square,
+        promotionRow: Int
+    ) {
+        if (to.row == promotionRow) {
+            PieceType.entries.filter { it != PieceType.KING }.forEach { type ->
+                moves.add(Move(from, to, promotion = type))
+            }
+        } else {
+            moves.add(Move(from, to))
+        }
+    }
+
+    private fun Square.isValid(): Boolean = row in 0..7 && col in 0..7
 }

@@ -50,7 +50,7 @@ class GameRepositoryImpl @Inject constructor(
             toRow = move.to.row,
             toCol = move.to.col,
             pieceType = pieceType.name,
-            isCapture = move.isCapture(),
+            isCapture = move.promotion != null,
             timestamp = System.currentTimeMillis()
         )
         gameDao.saveMove(entity)

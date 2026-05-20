@@ -1,7 +1,5 @@
 package com.p_soft.chess.domain.model
 
-import com.p_soft.chess.engine.ChessEngine
-
 data class GameState(
     val board: Map<Square, Piece>,
     val currentPlayer: Player,
@@ -11,54 +9,43 @@ data class GameState(
     val enPassantTarget: Square? = null,
     val pendingPromotion: Move? = null,
     val moveCount: Int = 0,
-    val halfMoveClock: Int = 0, // Для правила 50 ходов
+    val halfMoveClock: Int = 0,
     val fullMoveNumber: Int = 1
 ) {
     companion object {
         fun initial(): GameState {
+            val pieces = mutableMapOf<Square, Piece>()
+
+            for (col in 0..7) {
+                pieces[Square(1, col)] = Piece(PieceType.PAWN, Player.WHITE)
+                pieces[Square(6, col)] = Piece(PieceType.PAWN, Player.BLACK)
+            }
+
+            val backRowPieces = listOf(
+                PieceType.ROOK, PieceType.KNIGHT, PieceType.BISHOP, PieceType.QUEEN,
+                PieceType.KING, PieceType.BISHOP, PieceType.KNIGHT, PieceType.ROOK
+            )
+
+            for (col in 0..7) {
+                pieces[Square(0, col)] = Piece(backRowPieces[col], Player.WHITE)
+                pieces[Square(7, col)] = Piece(backRowPieces[col], Player.BLACK)
+            }
+
             return GameState(
-                board = ChessEngine.createInitialBoard(),
+                board = pieces,
                 currentPlayer = Player.WHITE,
                 status = GameStatus.NOT_STARTED
             )
         }
     }
 
-    /**
-     * Начать игру
-     */
-    fun start(): GameState {
-        return this.copy(
-            status = if (this.status == GameStatus.NOT_STARTED)
-                GameStatus.ACTIVE
-            else
-                this.status
-        )
-    }
+    fun start(): GameState = copy(status = GameStatus.ACTIVE)
 
-    /**
-     * Проверить, закончена ли игра
-     */
-    fun isGameOver(): Boolean {
-        return status.isGameOver()
-    }
+    fun isGameOver(): Boolean = status.isGameOver()
 
-    /**
-     * Получить победителя, если игра закончена матом
-     */
     fun getWinner(): Player? {
         return if (status == GameStatus.CHECKMATE) {
-            // Победитель - противоположный игрок
             if (currentPlayer == Player.WHITE) Player.BLACK else Player.WHITE
-        } else {
-            null
-        }
-    }
-
-    /**
-     * Получить описание текущего состояния
-     */
-    fun getStatusDescription(): String {
-        return status.getDescription(getWinner())
+        } else null
     }
 }
