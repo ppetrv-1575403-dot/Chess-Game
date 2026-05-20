@@ -20,13 +20,36 @@ import androidx.compose.ui.window.Dialog
 import com.p_soft.chess.domain.model.Piece
 import com.p_soft.chess.domain.model.PieceType
 import com.p_soft.chess.domain.model.Player
+import com.p_soft.chess.domain.model.Square
+import com.p_soft.chess.presentation.utils.getAvailablePromotions
+import com.p_soft.chess.presentation.utils.getPieceName
+import kotlin.collections.iterator
 
+/**
+ * Диалог выбора фигуры для превращения пешки.
+ * Показывает только те фигуры, которых у игрока меньше обычного количества.
+ * Если все фигуры на месте — показывает диалог с единственной доступной опцией (ферзь заблокирован).
+ */
 @Composable
 fun PromotionDialog(
     player: Player,
+    currentPieces: Map<Square, Piece>,
     onPieceSelected: (PieceType) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val availablePromotions = getAvailablePromotions(player, currentPieces)
+
+    // Если доступна только 1 фигура или ни одной — не показываем диалог
+    if (availablePromotions.size <= 1) {
+        // Автоматический выбор или отмена
+        if (availablePromotions.size == 1) {
+            onPieceSelected(availablePromotions.first().first)
+        } else {
+            onDismiss()
+        }
+        return
+    }
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -56,35 +79,43 @@ fun PromotionDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Показываем все фигуры, но недоступные заблокированы
+                val allTypes = listOf(PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    PromotionPieceOption(
-                        piece = Piece(PieceType.QUEEN, player),
-                        name = "Ферзь",
-                        onClick = { onPieceSelected(PieceType.QUEEN) }
-                    )
-                    PromotionPieceOption(
-                        piece = Piece(PieceType.ROOK, player),
-                        name = "Ладья",
-                        onClick = { onPieceSelected(PieceType.ROOK) }
-                    )
-                    PromotionPieceOption(
-                        piece = Piece(PieceType.BISHOP, player),
-                        name = "Слон",
-                        onClick = { onPieceSelected(PieceType.BISHOP) }
-                    )
-                    PromotionPieceOption(
-                        piece = Piece(PieceType.KNIGHT, player),
-                        name = "Конь",
-                        onClick = { onPieceSelected(PieceType.KNIGHT) }
+                    allTypes.forEach { pieceType ->
+                        val isAvailable = availablePromotions.any { it.first == pieceType }
+
+                        PromotionPieceOption(
+                            piece = Piece(pieceType, player),
+                            name = getPieceName(pieceType),
+                            available = isAvailable,
+                            onClick = {
+                                if (isAvailable) {
+                                    onPieceSelected(pieceType)
+                                }
+                            }
+                        )
+                    }
+                }
+
+                // Пояснение, если какие-то фигуры недоступны
+                if (availablePromotions.size < allTypes.size) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Серые фигуры недоступны — они уже есть на доске",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 TextButton(onClick = onDismiss) {
                     Text("Отмена")
@@ -98,13 +129,17 @@ fun PromotionDialog(
 private fun PromotionPieceOption(
     piece: Piece,
     name: String,
+    available: Boolean,
     onClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
+            .then(
+                if (available) Modifier.clickable(onClick = onClick)
+                else Modifier
+            )
             .padding(8.dp)
     ) {
         Box(
@@ -112,16 +147,29 @@ private fun PromotionPieceOption(
                 .size(52.dp)
                 .clip(CircleShape)
                 .background(
-                    if (piece.player == Player.WHITE) Color.White.copy(alpha = 0.15f)
-                    else Color.Black.copy(alpha = 0.15f)
+                    if (available) {
+                        if (piece.player == Player.WHITE) Color.White.copy(alpha = 0.15f)
+                        else Color.Black.copy(alpha = 0.15f)
+                    } else {
+                        Color.Gray.copy(alpha = 0.1f)
+                    }
                 )
-                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                .border(
+                    width = 2.dp,
+                    color = if (available) MaterialTheme.colorScheme.primary
+                    else Color.Gray.copy(alpha = 0.3f),
+                    shape = CircleShape
+                ),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = getPromotionPieceUnicode(piece),
+                text = getPieceUnicode(piece),
                 fontSize = 30.sp,
-                color = if (piece.player == Player.WHITE) Color.White else Color.Black
+                color = if (available) {
+                    if (piece.player == Player.WHITE) Color.White else Color.Black
+                } else {
+                    Color.Gray.copy(alpha = 0.4f)
+                }
             )
         }
 
@@ -130,17 +178,19 @@ private fun PromotionPieceOption(
         Text(
             text = name,
             style = MaterialTheme.typography.labelSmall,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            color = if (available) MaterialTheme.colorScheme.onSurface
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
         )
-    }
-}
 
-private fun getPromotionPieceUnicode(piece: Piece): String {
-    return when (piece.type) {
-        PieceType.QUEEN -> if (piece.player == Player.WHITE) "♕" else "♛"
-        PieceType.ROOK -> if (piece.player == Player.WHITE) "♖" else "♜"
-        PieceType.BISHOP -> if (piece.player == Player.WHITE) "♗" else "♝"
-        PieceType.KNIGHT -> if (piece.player == Player.WHITE) "♘" else "♞"
-        else -> ""
+        // Подпись о доступности
+        if (!available) {
+            Text(
+                text = "есть",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray.copy(alpha = 0.5f),
+                fontSize = 8.sp
+            )
+        }
     }
 }

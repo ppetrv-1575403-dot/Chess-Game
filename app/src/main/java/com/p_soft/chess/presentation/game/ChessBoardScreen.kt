@@ -24,7 +24,7 @@ import com.p_soft.chess.domain.model.Piece
 import com.p_soft.chess.domain.model.PieceType
 import com.p_soft.chess.domain.model.Player
 import com.p_soft.chess.domain.model.Square
-import kotlin.text.get
+import com.p_soft.chess.presentation.utils.isNoAvailablePromotions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +32,6 @@ fun ChessBoardScreen(
     viewModel: GameViewModel = hiltViewModel()
 ) {
     val gameState by viewModel.gameState.collectAsStateWithLifecycle()
-
     var selectedSquare by remember { mutableStateOf<Square?>(null) }
     var validMoves by remember { mutableStateOf<List<Move>>(emptyList()) }
 
@@ -96,8 +95,21 @@ fun ChessBoardScreen(
                                     selectedSquare = square
                                     validMoves = viewModel.getValidMoves(square)
                                 } else {
-                                    val move = Move(selectedSquare!!, square)
-                                    viewModel.onSquareClick(square, selectedSquare)
+                                    // ИСПРАВЛЕНО: Правильно обрабатываем ход с превращением
+                                    val piece = gameState.board[selectedSquare!!]
+                                    val isPromotionMove = piece?.type == PieceType.PAWN &&
+                                            square.row == (if (piece.player == Player.WHITE) 7 else 0)
+
+                                    if (isPromotionMove) {
+                                        // Создаём ход без promotion (будет показан диалог)
+                                        val move = Move(selectedSquare!!, square)
+                                        viewModel.makeMove(move)
+                                    } else {
+                                        // Обычный ход
+                                        val move = Move(selectedSquare!!, square)
+                                        viewModel.makeMove(move)
+                                    }
+
                                     selectedSquare = null
                                     validMoves = emptyList()
                                 }
@@ -126,10 +138,11 @@ fun ChessBoardScreen(
         }
     }
 
-    // Диалог выбора фигуры
+    // Диалог выбора фигуры для превращения пешки
     if (gameState.pendingPromotion != null) {
         PromotionDialog(
             player = gameState.currentPlayer,
+            currentPieces = gameState.board,
             onPieceSelected = { pieceType ->
                 viewModel.completePromotion(pieceType)
             },
@@ -157,10 +170,7 @@ private fun ChessBoard(
                 .height(24.dp)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            // Левый отступ для выравнивания
             Spacer(modifier = Modifier.width(24.dp))
-
-            // Буквы столбцов
             for (col in 0..7) {
                 Box(
                     modifier = Modifier
@@ -176,8 +186,6 @@ private fun ChessBoard(
                     )
                 }
             }
-
-            // Правый отступ
             Spacer(modifier = Modifier.width(24.dp))
         }
 
@@ -186,7 +194,7 @@ private fun ChessBoard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f) // Каждый ряд занимает равную долю
+                    .weight(1f)
             ) {
                 // Левая координата (цифра)
                 Box(
@@ -250,7 +258,6 @@ private fun ChessBoard(
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Spacer(modifier = Modifier.width(24.dp))
-
             for (col in 0..7) {
                 Box(
                     modifier = Modifier
@@ -266,7 +273,6 @@ private fun ChessBoard(
                     )
                 }
             }
-
             Spacer(modifier = Modifier.width(24.dp))
         }
     }
@@ -283,10 +289,10 @@ private fun ChessSquare(
     onClick: () -> Unit
 ) {
     val backgroundColor = when {
-        isSelected -> Color(0xFF7CB342) // Зеленый для выбранной клетки
-        isLastMove -> if (isLight) Color(0xFFF7F769) else Color(0xFFB5B53B) // Желтый для последнего хода
-        isLight -> Color(0xFFF0D9B5) // Светлая клетка
-        else -> Color(0xFFB58863) // Темная клетка
+        isSelected -> Color(0xFF7CB342)
+        isLastMove -> if (isLight) Color(0xFFF7F769) else Color(0xFFB5B53B)
+        isLight -> Color(0xFFF0D9B5)
+        else -> Color(0xFFB58863)
     }
 
     Box(
@@ -323,7 +329,7 @@ private fun ChessSquare(
                 color = if (it.player == Player.WHITE) Color.White else Color.Black,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.offset(y = (-2).dp) // Небольшая корректировка позиции
+                modifier = Modifier.offset(y = (-2).dp)
             )
         }
     }

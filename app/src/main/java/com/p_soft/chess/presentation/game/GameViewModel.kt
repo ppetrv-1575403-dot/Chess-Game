@@ -40,6 +40,13 @@ class GameViewModel @Inject constructor(
         gameInteractor.makeMove(move)
     }
 
+    /**
+     * Сделать ход (вызывается из UI)
+     */
+    fun makeMove(move: Move) {
+        gameInteractor.makeMove(move)
+    }
+
     fun getValidMoves(square: Square): List<Move> {
         return gameInteractor.getValidMoves(square)
     }

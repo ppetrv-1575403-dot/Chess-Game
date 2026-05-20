@@ -8,7 +8,6 @@ import com.p_soft.chess.domain.model.Piece
 import com.p_soft.chess.domain.model.PieceType
 import com.p_soft.chess.domain.model.Player
 import com.p_soft.chess.domain.model.Square
-import kotlin.collections.filter
 import kotlin.collections.get
 import kotlin.collections.iterator
 import kotlin.text.get
@@ -17,9 +16,6 @@ class ChessEngine {
 
     // ==================== ПУБЛИЧНЫЕ МЕТОДЫ ====================
 
-    /**
-     * Получить все легальные ходы для фигуры на указанной клетке
-     */
     fun getLegalMoves(gameState: GameState, square: Square): List<Move> {
         val piece = gameState.board[square] ?: return emptyList()
         if (piece.player != gameState.currentPlayer) return emptyList()
@@ -32,13 +28,9 @@ class ChessEngine {
         }
     }
 
-    /**
-     * Выполнить ход и вернуть новое состояние игры
-     */
     fun executeMove(state: GameState, move: Move): GameState {
         val piece = state.board[move.from] ?: return state
 
-        // Определяем взятую фигуру
         val capturedPiece = when {
             move.isEnPassant -> {
                 val capturedRow = if (piece.player == Player.WHITE) move.to.row - 1 else move.to.row + 1
@@ -50,7 +42,6 @@ class ChessEngine {
         val newBoard = applyMove(state.board, move)
         val newPlayer = if (state.currentPlayer == Player.WHITE) Player.BLACK else Player.WHITE
 
-        // Проверяем шах и наличие легальных ходов
         val isCheck = isKingInCheck(newBoard, newPlayer)
         val hasLegalMoves = hasAnyLegalMove(newBoard, newPlayer)
 
@@ -61,13 +52,11 @@ class ChessEngine {
             else -> GameStatus.ACTIVE
         }
 
-        // Определяем клетку для взятия на проходе
         val newEnPassant = if (piece.type == PieceType.PAWN &&
             kotlin.math.abs(move.from.row - move.to.row) == 2) {
             Square((move.from.row + move.to.row) / 2, move.from.col)
         } else null
 
-        // Счётчик полуходов (для правила 50 ходов)
         val newHalfMoveClock = if (piece.type == PieceType.PAWN || capturedPiece != null) {
             0
         } else {
@@ -88,9 +77,6 @@ class ChessEngine {
         )
     }
 
-    /**
-     * Применить ход к доске (без проверки правил)
-     */
     fun applyMove(board: Map<Square, Piece>, move: Move): Map<Square, Piece> {
         val newBoard = board.toMutableMap()
         val piece = newBoard[move.from] ?: return newBoard
@@ -105,9 +91,6 @@ class ChessEngine {
         return newBoard
     }
 
-    /**
-     * Проверить, находится ли король под шахом
-     */
     fun isKingInCheck(board: Map<Square, Piece>, player: Player): Boolean {
         val kingSquare = board.entries.find {
             it.value.type == PieceType.KING && it.value.player == player
@@ -117,9 +100,6 @@ class ChessEngine {
         return isSquareAttacked(board, kingSquare, opponent)
     }
 
-    /**
-     * Проверить, есть ли хотя бы один легальный ход
-     */
     fun hasAnyLegalMove(board: Map<Square, Piece>, player: Player): Boolean {
         for ((square, piece) in board) {
             if (piece.player == player) {
@@ -135,7 +115,18 @@ class ChessEngine {
         return false
     }
 
-    // ==================== КОНВЕРТАЦИЯ МОДЕЛЕЙ ====================
+    fun getAllKingMoves(gameState: GameState, square: Square): List<Move> {
+        val piece = gameState.board[square] ?: return emptyList()
+        if (piece.type != PieceType.KING) return emptyList()
+
+        val normalMoves = getKingMoves(gameState.board, square, piece.player)
+        val castlingMoves = getCastlingMoves(gameState.board, square, piece.player)
+
+        return (normalMoves + castlingMoves).filter { move ->
+            val newBoard = applyMove(gameState.board, move)
+            !isKingInCheck(newBoard, piece.player)
+        }
+    }
 
     fun gameStateToBoardState(gameState: GameState): BoardState {
         return BoardState(
@@ -165,11 +156,8 @@ class ChessEngine {
         )
     }
 
-    // ==================== ГЕНЕРАЦИЯ ХОДОВ ====================
+    // ==================== ПРИВАТНЫЕ МЕТОДЫ ГЕНЕРАЦИИ ХОДОВ ====================
 
-    /**
-     * Получить все возможные ходы для фигуры (без проверки шаха)
-     */
     private fun getRawMoves(
         board: Map<Square, Piece>,
         square: Square,
@@ -187,7 +175,7 @@ class ChessEngine {
     }
 
     /**
-     * Ходы пешки
+     * Ходы пешки (ИСПРАВЛЕНО - взятие наискосок с превращением)
      */
     private fun getPawnMoves(
         board: Map<Square, Piece>,
@@ -214,7 +202,7 @@ class ChessEngine {
             }
         }
 
-        // Взятие наискосок
+        // Взятие наискосок (включая превращение при взятии)
         for (colOffset in listOf(-1, 1)) {
             val captureSquare = Square(square.row + direction, square.col + colOffset)
             if (isValidSquare(captureSquare)) {
@@ -222,11 +210,11 @@ class ChessEngine {
 
                 // Обычное взятие или взятие с превращением
                 if (targetPiece != null && targetPiece.player != player) {
-                    // ВАЖНО: addMovesForSquare корректно обрабатывает превращение
+                    // ВАЖНО: используем addMovesForSquare для обработки превращения
                     addMovesForSquare(moves, square, captureSquare, promotionRow)
                 }
 
-                // Взятие на проходе
+                // Взятие на проходе (превращение при взятии на проходе невозможно)
                 if (enPassantTarget == captureSquare) {
                     moves.add(Move(square, captureSquare, isEnPassant = true))
                 }
@@ -236,9 +224,6 @@ class ChessEngine {
         return moves
     }
 
-    /**
-     * Ходы коня
-     */
     private fun getKnightMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
         val offsets = listOf(
             -2 to -1, -2 to 1, -1 to -2, -1 to 2,
@@ -247,33 +232,20 @@ class ChessEngine {
         return getJumpMoves(board, square, player, offsets)
     }
 
-    /**
-     * Ходы слона
-     */
     private fun getBishopMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
         return getSlidingMoves(board, square, player, listOf(-1 to -1, -1 to 1, 1 to -1, 1 to 1))
     }
 
-    /**
-     * Ходы ладьи
-     */
     private fun getRookMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
         return getSlidingMoves(board, square, player, listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1))
     }
 
-    /**
-     * Ходы ферзя
-     */
     private fun getQueenMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
         return getSlidingMoves(board, square, player,
             listOf(-1 to -1, -1 to 0, -1 to 1, 0 to -1, 0 to 1, 1 to -1, 1 to 0, 1 to 1))
     }
 
-    /**
-     * Ходы короля (БЕЗ проверки рокировки для избежания рекурсии)
-     */
     private fun getKingMoves(board: Map<Square, Piece>, square: Square, player: Player): List<Move> {
-        // Только обычные ходы короля (на одну клетку)
         val offsets = listOf(
             -1 to -1, -1 to 0, -1 to 1,
             0 to -1, 0 to 1,
@@ -282,28 +254,22 @@ class ChessEngine {
         return getJumpMoves(board, square, player, offsets)
     }
 
-    /**
-     * Проверить возможность рокировки (вызывается отдельно, не из getKingMoves)
-     */
-    fun getCastlingMoves(board: Map<Square, Piece>, kingSquare: Square, player: Player): List<Move> {
+    private fun getCastlingMoves(board: Map<Square, Piece>, kingSquare: Square, player: Player): List<Move> {
         val moves = mutableListOf<Move>()
         val piece = board[kingSquare] ?: return moves
 
         if (piece.hasMoved) return moves
 
-        // Проверяем, что король не под шахом (ВАЖНО: эта проверка не вызывает getKingMoves)
         if (isSquareAttackedSimple(board, kingSquare, if (player == Player.WHITE) Player.BLACK else Player.WHITE)) {
             return moves
         }
 
         val backRank = if (player == Player.WHITE) 0 else 7
 
-        // Короткая рокировка
         if (canCastle(board, player, backRank, 7, listOf(5, 6))) {
             moves.add(Move(kingSquare, Square(backRank, 6), isCastling = true))
         }
 
-        // Длинная рокировка
         if (canCastle(board, player, backRank, 0, listOf(1, 2, 3))) {
             moves.add(Move(kingSquare, Square(backRank, 2), isCastling = true))
         }
@@ -311,27 +277,8 @@ class ChessEngine {
         return moves
     }
 
-    /**
-     * Объединённый метод для получения всех ходов короля (включая рокировку)
-     */
-    fun getAllKingMoves(gameState: GameState, square: Square): List<Move> {
-        val piece = gameState.board[square] ?: return emptyList()
-        if (piece.type != PieceType.KING) return emptyList()
-
-        val normalMoves = getKingMoves(gameState.board, square, piece.player)
-        val castlingMoves = getCastlingMoves(gameState.board, square, piece.player)
-
-        return (normalMoves + castlingMoves).filter { move ->
-            val newBoard = applyMove(gameState.board, move)
-            !isKingInCheck(newBoard, piece.player)
-        }
-    }
-
     // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
-    /**
-     * Ходы для фигур, которые прыгают (конь, король)
-     */
     private fun getJumpMoves(
         board: Map<Square, Piece>,
         square: Square,
@@ -353,9 +300,6 @@ class ChessEngine {
         return moves
     }
 
-    /**
-     * Ходы для скользящих фигур (слон, ладья, ферзь)
-     */
     private fun getSlidingMoves(
         board: Map<Square, Piece>,
         square: Square,
@@ -378,7 +322,7 @@ class ChessEngine {
                         moves.add(Move(square, target))
                         break
                     }
-                    else -> break // Своя фигура
+                    else -> break
                 }
 
                 currentRow += rowDir
@@ -389,9 +333,6 @@ class ChessEngine {
         return moves
     }
 
-    /**
-     * Проверка возможности рокировки
-     */
     private fun canCastle(
         board: Map<Square, Piece>,
         player: Player,
@@ -404,17 +345,12 @@ class ChessEngine {
 
         val opponent = if (player == Player.WHITE) Player.BLACK else Player.WHITE
 
-        // Проверяем, что все клетки между королём и ладьёй пусты и не атакованы
         return emptyCols.all { col ->
             val sq = Square(rank, col)
             board[sq] == null && !isSquareAttackedSimple(board, sq, opponent)
         }
     }
 
-    /**
-     * Проверка, атакована ли клетка (БЕЗ проверки рокировки)
-     * Используется внутри getCastlingMoves для избежания рекурсии
-     */
     private fun isSquareAttackedSimple(board: Map<Square, Piece>, square: Square, attackerColor: Player): Boolean {
         for ((attackerSquare, piece) in board) {
             if (piece.player == attackerColor) {
@@ -424,7 +360,7 @@ class ChessEngine {
                     PieceType.BISHOP -> getBishopMoves(board, attackerSquare, attackerColor)
                     PieceType.ROOK -> getRookMoves(board, attackerSquare, attackerColor)
                     PieceType.QUEEN -> getQueenMoves(board, attackerSquare, attackerColor)
-                    PieceType.KING -> getKingMoves(board, attackerSquare, attackerColor) // Король без рокировки
+                    PieceType.KING -> getKingMoves(board, attackerSquare, attackerColor)
                 }
                 if (moves.any { it.to == square }) {
                     return true
@@ -434,16 +370,10 @@ class ChessEngine {
         return false
     }
 
-    /**
-     * Полная проверка атаки на клетку (может использоваться для проверки шаха)
-     */
     private fun isSquareAttacked(board: Map<Square, Piece>, square: Square, attackerColor: Player): Boolean {
         return isSquareAttackedSimple(board, square, attackerColor)
     }
 
-    /**
-     * Атаки пешки (только по диагонали)
-     */
     private fun getPawnAttacks(square: Square, player: Player): List<Move> {
         val direction = if (player == Player.WHITE) 1 else -1
         val moves = mutableListOf<Move>()
@@ -460,15 +390,10 @@ class ChessEngine {
 
     // ==================== ИСПОЛНЕНИЕ ХОДОВ ====================
 
-    /**
-     * Выполнить рокировку
-     */
     private fun executeCastling(board: MutableMap<Square, Piece>, piece: Piece, move: Move) {
-        // Перемещаем короля
         board[move.to] = piece.copy(hasMoved = true)
         board.remove(move.from)
 
-        // Перемещаем ладью
         val (rookFrom, rookTo) = if (move.to.col == 6) {
             Square(move.from.row, 7) to Square(move.from.row, 5)
         } else {
@@ -482,9 +407,6 @@ class ChessEngine {
         }
     }
 
-    /**
-     * Выполнить взятие на проходе
-     */
     private fun executeEnPassant(board: MutableMap<Square, Piece>, piece: Piece, move: Move) {
         val capturedRow = if (piece.player == Player.WHITE) move.to.row - 1 else move.to.row + 1
         board.remove(Square(capturedRow, move.to.col))
@@ -492,17 +414,11 @@ class ChessEngine {
         board.remove(move.from)
     }
 
-    /**
-     * Выполнить превращение пешки
-     */
     private fun executePromotion(board: MutableMap<Square, Piece>, piece: Piece, move: Move) {
         board[move.to] = Piece(move.promotion!!, piece.player, hasMoved = true)
         board.remove(move.from)
     }
 
-    /**
-     * Выполнить обычный ход
-     */
     private fun executeNormalMove(board: MutableMap<Square, Piece>, piece: Piece, move: Move) {
         board[move.to] = piece.copy(hasMoved = true)
         board.remove(move.from)
@@ -511,7 +427,10 @@ class ChessEngine {
     // ==================== УТИЛИТЫ ====================
 
     /**
-     * Добавить ходы с учётом превращения пешки
+     * Добавить ходы с учётом превращения пешки.
+     * ВАЖНО: Этот метод используется и для хода вперёд, и для взятия!
+     * Если promotionRow достигнута и ВСЕ фигуры для превращения недоступны,
+     * разрешаем ход без превращения.
      */
     private fun addMovesForSquare(
         moves: MutableList<Move>,
@@ -520,18 +439,17 @@ class ChessEngine {
         promotionRow: Int
     ) {
         if (to.row == promotionRow) {
-            // Все возможные превращения
+            // Добавляем ходы с превращением
             for (type in listOf(PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT)) {
                 moves.add(Move(from, to, promotion = type))
             }
+            // ВСЕГДА добавляем ход без превращения (пешка остаётся пешкой)
+            moves.add(Move(from, to, promotion = null))
         } else {
             moves.add(Move(from, to))
         }
     }
 
-    /**
-     * Проверить, что клетка находится на доске
-     */
     private fun isValidSquare(square: Square): Boolean {
         return square.row in 0..7 && square.col in 0..7
     }
