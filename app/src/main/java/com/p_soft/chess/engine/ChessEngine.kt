@@ -214,14 +214,18 @@ class ChessEngine {
             }
         }
 
-        // Взятие
+        // Взятие наискосок
         for (colOffset in listOf(-1, 1)) {
             val captureSquare = Square(square.row + direction, square.col + colOffset)
             if (isValidSquare(captureSquare)) {
                 val targetPiece = board[captureSquare]
+
+                // Обычное взятие или взятие с превращением
                 if (targetPiece != null && targetPiece.player != player) {
+                    // ВАЖНО: addMovesForSquare корректно обрабатывает превращение
                     addMovesForSquare(moves, square, captureSquare, promotionRow)
                 }
+
                 // Взятие на проходе
                 if (enPassantTarget == captureSquare) {
                     moves.add(Move(square, captureSquare, isEnPassant = true))
