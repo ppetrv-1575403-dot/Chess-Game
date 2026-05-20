@@ -1,5 +1,6 @@
 package com.p_soft.chess.presentation.game
 
+import GameControls
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -24,7 +26,6 @@ import com.p_soft.chess.domain.model.Piece
 import com.p_soft.chess.domain.model.PieceType
 import com.p_soft.chess.domain.model.Player
 import com.p_soft.chess.domain.model.Square
-import com.p_soft.chess.presentation.utils.isNoAvailablePromotions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +35,10 @@ fun ChessBoardScreen(
     val gameState by viewModel.gameState.collectAsStateWithLifecycle()
     var selectedSquare by remember { mutableStateOf<Square?>(null) }
     var validMoves by remember { mutableStateOf<List<Move>>(emptyList()) }
+
+    LaunchedEffect(null) {
+        viewModel.gameInteractor.loadGame()
+    }
 
     Scaffold(
         topBar = {
@@ -119,7 +124,12 @@ fun ChessBoardScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Захваченные фигуры
+            CapturedPiecesBar(gameState = gameState)
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Кнопки управления
             GameControls(
@@ -274,6 +284,57 @@ private fun ChessBoard(
                 }
             }
             Spacer(modifier = Modifier.width(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun CapturedPiecesBar(gameState: GameState) {
+    val whiteCaptured = gameState.capturedPieces.filter { it.player == Player.BLACK }
+    val blackCaptured = gameState.capturedPieces.filter { it.player == Player.WHITE }
+
+    if (whiteCaptured.isEmpty() && blackCaptured.isEmpty()) return
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("♟:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                whiteCaptured.forEach { piece ->
+                    Text(
+                        text = getPieceUnicode(piece),
+                        fontSize = 14.sp,
+                        modifier = Modifier.alpha(0.7f)
+                    )
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                blackCaptured.forEach { piece ->
+                    Text(
+                        text = getPieceUnicode(piece),
+                        fontSize = 14.sp,
+                        modifier = Modifier.alpha(0.7f)
+                    )
+                }
+                Text("♙:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

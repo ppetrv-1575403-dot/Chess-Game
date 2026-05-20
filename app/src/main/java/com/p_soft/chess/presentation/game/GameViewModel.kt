@@ -15,19 +15,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class GameViewModel @Inject constructor(
-    private val gameInteractor: GameInteractor
+    val gameInteractor: GameInteractor
 ) : ViewModel() {
 
-    val gameState: StateFlow<GameState> = gameInteractor.gameState
+    val gameState: StateFlow<GameState> =
+        gameInteractor.gameState
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             GameState.initial()
         )
-
-    init {
-        gameInteractor.loadGame()
-    }
 
     fun onSquareClick(square: Square, selectedSquare: Square?) {
         val currentState = gameState.value
