@@ -34,7 +34,16 @@ class GameInteractor @Inject constructor(
     }
 
     fun getValidMoves(square: Square): List<Move> {
-        return chessEngine.getLegalMoves(_gameState.value, square)
+        val currentState = _gameState.value
+        val piece = currentState.board[square] ?: return emptyList()
+
+        return if (piece.type == PieceType.KING) {
+            // Для короля используем специальный метод с рокировкой
+            chessEngine.getAllKingMoves(currentState, square)
+        } else {
+            // Для остальных фигур обычный метод
+            chessEngine.getLegalMoves(currentState, square)
+        }
     }
 
     fun makeMove(move: Move): Boolean {

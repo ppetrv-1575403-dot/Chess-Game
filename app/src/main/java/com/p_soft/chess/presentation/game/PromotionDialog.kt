@@ -20,7 +20,6 @@ import androidx.compose.ui.window.Dialog
 import com.p_soft.chess.domain.model.Piece
 import com.p_soft.chess.domain.model.PieceType
 import com.p_soft.chess.domain.model.Player
-import com.p_soft.chess.presentation.utils.getPieceUnicode
 
 @Composable
 fun PromotionDialog(
@@ -40,45 +39,52 @@ fun PromotionDialog(
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Выберите фигуру",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = "Пешка достигла последней горизонтали",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    listOf(
-                        PieceType.QUEEN to "Ферзь",
-                        PieceType.ROOK to "Ладья",
-                        PieceType.BISHOP to "Слон",
-                        PieceType.KNIGHT to "Конь"
-                    ).forEach { (type, name) ->
-                        PromotionPieceOption(
-                            piece = Piece(type, player),
-                            name = name,
-                            onClick = { onPieceSelected(type) }
-                        )
-                    }
+                    PromotionPieceOption(
+                        piece = Piece(PieceType.QUEEN, player),
+                        name = "Ферзь",
+                        onClick = { onPieceSelected(PieceType.QUEEN) }
+                    )
+                    PromotionPieceOption(
+                        piece = Piece(PieceType.ROOK, player),
+                        name = "Ладья",
+                        onClick = { onPieceSelected(PieceType.ROOK) }
+                    )
+                    PromotionPieceOption(
+                        piece = Piece(PieceType.BISHOP, player),
+                        name = "Слон",
+                        onClick = { onPieceSelected(PieceType.BISHOP) }
+                    )
+                    PromotionPieceOption(
+                        piece = Piece(PieceType.KNIGHT, player),
+                        name = "Конь",
+                        onClick = { onPieceSelected(PieceType.KNIGHT) }
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 TextButton(onClick = onDismiss) {
                     Text("Отмена")
@@ -103,18 +109,18 @@ private fun PromotionPieceOption(
     ) {
         Box(
             modifier = Modifier
-                .size(56.dp)
+                .size(52.dp)
                 .clip(CircleShape)
                 .background(
-                    if (piece.player == Player.WHITE) Color.White.copy(alpha = 0.2f)
-                    else Color.Black.copy(alpha = 0.2f)
+                    if (piece.player == Player.WHITE) Color.White.copy(alpha = 0.15f)
+                    else Color.Black.copy(alpha = 0.15f)
                 )
                 .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = getPieceUnicode(piece),
-                fontSize = 32.sp,
+                text = getPromotionPieceUnicode(piece),
+                fontSize = 30.sp,
                 color = if (piece.player == Player.WHITE) Color.White else Color.Black
             )
         }
@@ -123,9 +129,18 @@ private fun PromotionPieceOption(
 
         Text(
             text = name,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.labelSmall,
             textAlign = TextAlign.Center
         )
     }
 }
 
+private fun getPromotionPieceUnicode(piece: Piece): String {
+    return when (piece.type) {
+        PieceType.QUEEN -> if (piece.player == Player.WHITE) "♕" else "♛"
+        PieceType.ROOK -> if (piece.player == Player.WHITE) "♖" else "♜"
+        PieceType.BISHOP -> if (piece.player == Player.WHITE) "♗" else "♝"
+        PieceType.KNIGHT -> if (piece.player == Player.WHITE) "♘" else "♞"
+        else -> ""
+    }
+}

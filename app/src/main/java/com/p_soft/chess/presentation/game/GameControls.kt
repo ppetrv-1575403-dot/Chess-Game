@@ -25,12 +25,12 @@ fun GameControls(
             enabled = gameStatus.requiresPlayerAction(),
             modifier = Modifier
                 .weight(1f)
-                .height(48.dp)
+                .height(44.dp)
         ) {
             Icon(
                 Icons.Default.Undo,
                 contentDescription = "Отменить ход",
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text("Отменить")
@@ -40,12 +40,12 @@ fun GameControls(
             onClick = onNewGame,
             modifier = Modifier
                 .weight(1f)
-                .height(48.dp)
+                .height(44.dp)
         ) {
             Icon(
                 Icons.Default.Refresh,
                 contentDescription = "Новая игра",
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text("Новая игра")

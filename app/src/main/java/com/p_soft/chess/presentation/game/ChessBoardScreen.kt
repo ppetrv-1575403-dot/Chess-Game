@@ -21,9 +21,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.p_soft.chess.domain.model.GameState
 import com.p_soft.chess.domain.model.Move
 import com.p_soft.chess.domain.model.Piece
+import com.p_soft.chess.domain.model.PieceType
 import com.p_soft.chess.domain.model.Player
 import com.p_soft.chess.domain.model.Square
-import com.p_soft.chess.presentation.utils.getPieceUnicode
 import kotlin.text.get
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,6 +32,7 @@ fun ChessBoardScreen(
     viewModel: GameViewModel = hiltViewModel()
 ) {
     val gameState by viewModel.gameState.collectAsStateWithLifecycle()
+
     var selectedSquare by remember { mutableStateOf<Square?>(null) }
     var validMoves by remember { mutableStateOf<List<Move>>(emptyList()) }
 
@@ -55,13 +56,13 @@ fun ChessBoardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Статус игры
             GameStatusBar(gameState = gameState)
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Шахматная доска
             Card(
@@ -77,28 +78,25 @@ fun ChessBoardScreen(
                     validMoves = validMoves,
                     onSquareClick = { square ->
                         if (!gameState.status.requiresPlayerAction()) return@ChessBoard
+                        if (gameState.pendingPromotion != null) return@ChessBoard
 
                         if (selectedSquare == null) {
-                            // Выбор фигуры
                             val piece = gameState.board[square]
                             if (piece != null && piece.player == gameState.currentPlayer) {
                                 selectedSquare = square
                                 validMoves = viewModel.getValidMoves(square)
                             }
                         } else {
-                            // Попытка хода
                             if (square == selectedSquare) {
-                                // Отмена выбора
                                 selectedSquare = null
                                 validMoves = emptyList()
                             } else {
                                 val clickedPiece = gameState.board[square]
                                 if (clickedPiece != null && clickedPiece.player == gameState.currentPlayer) {
-                                    // Выбор другой своей фигуры
                                     selectedSquare = square
                                     validMoves = viewModel.getValidMoves(square)
                                 } else {
-                                    // Ход
+                                    val move = Move(selectedSquare!!, square)
                                     viewModel.onSquareClick(square, selectedSquare)
                                     selectedSquare = null
                                     validMoves = emptyList()
@@ -109,7 +107,7 @@ fun ChessBoardScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Кнопки управления
             GameControls(
@@ -128,7 +126,7 @@ fun ChessBoardScreen(
         }
     }
 
-    // Диалог выбора фигуры для превращения пешки
+    // Диалог выбора фигуры
     if (gameState.pendingPromotion != null) {
         PromotionDialog(
             player = gameState.currentPlayer,
@@ -149,15 +147,20 @@ private fun ChessBoard(
     validMoves: List<Move>,
     onSquareClick: (Square) -> Unit
 ) {
-    Column {
-        // Координаты сверху (буквы)
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // Верхняя координатная строка (буквы a-h)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(20.dp)
+                .height(24.dp)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Spacer(modifier = Modifier.width(20.dp))
+            // Левый отступ для выравнивания
+            Spacer(modifier = Modifier.width(24.dp))
+
+            // Буквы столбцов
             for (col in 0..7) {
                 Box(
                     modifier = Modifier
@@ -173,16 +176,22 @@ private fun ChessBoard(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(20.dp))
+
+            // Правый отступ
+            Spacer(modifier = Modifier.width(24.dp))
         }
 
-        // Доска
+        // Ряды доски (8 рядов сверху вниз: 8,7,6,5,4,3,2,1)
         for (row in 7 downTo 0) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                // Координата слева (цифра)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f) // Каждый ряд занимает равную долю
+            ) {
+                // Левая координата (цифра)
                 Box(
                     modifier = Modifier
-                        .width(20.dp)
+                        .width(24.dp)
                         .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
@@ -195,7 +204,7 @@ private fun ChessBoard(
                     )
                 }
 
-                // Клетки
+                // 8 клеток в ряду
                 for (col in 0..7) {
                     val square = Square(row, col)
                     val isLight = (row + col) % 2 == 0
@@ -205,6 +214,7 @@ private fun ChessBoard(
                     val isLastMoveTo = gameState.moveHistory.lastOrNull()?.to == square
 
                     ChessSquare(
+                        modifier = Modifier.weight(1f),
                         isLight = isLight,
                         isSelected = isSelected,
                         isValidMove = isValidMove,
@@ -214,10 +224,10 @@ private fun ChessBoard(
                     )
                 }
 
-                // Координата справа (цифра)
+                // Правая координата (цифра)
                 Box(
                     modifier = Modifier
-                        .width(20.dp)
+                        .width(24.dp)
                         .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
@@ -232,14 +242,15 @@ private fun ChessBoard(
             }
         }
 
-        // Координаты снизу (буквы)
+        // Нижняя координатная строка (буквы a-h)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(20.dp)
+                .height(24.dp)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Spacer(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.width(24.dp))
+
             for (col in 0..7) {
                 Box(
                     modifier = Modifier
@@ -255,13 +266,15 @@ private fun ChessBoard(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(20.dp))
+
+            Spacer(modifier = Modifier.width(24.dp))
         }
     }
 }
 
 @Composable
 private fun ChessSquare(
+    modifier: Modifier = Modifier,
     isLight: Boolean,
     isSelected: Boolean,
     isValidMove: Boolean,
@@ -270,36 +283,35 @@ private fun ChessSquare(
     onClick: () -> Unit
 ) {
     val backgroundColor = when {
-        isSelected -> Color(0xFF7CB342)
-        isLastMove -> if (isLight) Color(0xFFF7F769) else Color(0xFFB5B53B)
-        isLight -> Color(0xFFF0D9B5)
-        else -> Color(0xFFB58863)
+        isSelected -> Color(0xFF7CB342) // Зеленый для выбранной клетки
+        isLastMove -> if (isLight) Color(0xFFF7F769) else Color(0xFFB5B53B) // Желтый для последнего хода
+        isLight -> Color(0xFFF0D9B5) // Светлая клетка
+        else -> Color(0xFFB58863) // Темная клетка
     }
 
     Box(
-        modifier = Modifier
-            //.weight(1.dp)
+        modifier = modifier
             .aspectRatio(1f)
             .background(backgroundColor)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        // Индикатор возможного хода
+        // Индикатор возможного хода (пустая клетка)
         if (isValidMove && piece == null) {
             Box(
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(24.dp)
                     .clip(CircleShape)
                     .background(Color.Black.copy(alpha = 0.2f))
             )
         }
 
-        // Индикатор возможного взятия
+        // Индикатор возможного взятия (клетка с фигурой противника)
         if (isValidMove && piece != null) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize(0.85f)
-                    .border(3.dp, Color.Red.copy(alpha = 0.5f), CircleShape)
+                    .fillMaxSize(0.9f)
+                    .border(4.dp, Color.Red.copy(alpha = 0.6f), CircleShape)
             )
         }
 
@@ -307,11 +319,23 @@ private fun ChessSquare(
         piece?.let {
             Text(
                 text = getPieceUnicode(it),
-                fontSize = 36.sp,
+                fontSize = 38.sp,
                 color = if (it.player == Player.WHITE) Color.White else Color.Black,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.offset(y = (-2).dp) // Небольшая корректировка позиции
             )
         }
+    }
+}
+
+fun getPieceUnicode(piece: Piece): String {
+    return when (piece.type) {
+        PieceType.KING -> if (piece.player == Player.WHITE) "♔" else "♚"
+        PieceType.QUEEN -> if (piece.player == Player.WHITE) "♕" else "♛"
+        PieceType.ROOK -> if (piece.player == Player.WHITE) "♖" else "♜"
+        PieceType.BISHOP -> if (piece.player == Player.WHITE) "♗" else "♝"
+        PieceType.KNIGHT -> if (piece.player == Player.WHITE) "♘" else "♞"
+        PieceType.PAWN -> if (piece.player == Player.WHITE) "♙" else "♟"
     }
 }

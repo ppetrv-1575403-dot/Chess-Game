@@ -20,7 +20,6 @@ import com.p_soft.chess.domain.model.GameStatus
 import com.p_soft.chess.domain.model.Player
 
 @Composable
-
 fun GameStatusBar(gameState: GameState) {
     val statusColor = when (gameState.status) {
         GameStatus.CHECK, GameStatus.CHECKMATE -> Color(0xFFF44336)
@@ -35,83 +34,49 @@ fun GameStatusBar(gameState: GameState) {
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Статус игры
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Индикатор текущего игрока
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (gameState.currentPlayer == Player.WHITE) Color.White
-                                else Color.Black
-                            )
-                            .border(2.dp, Color.Gray, CircleShape)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Column {
-                        Text(
-                            text = "Ход ${gameState.fullMoveNumber}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (gameState.currentPlayer == Player.WHITE) Color.White
+                            else Color.Black
                         )
-                        Text(
-                            text = if (gameState.currentPlayer == Player.WHITE) "Ходят белые" else "Ходят чёрные",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                        .border(1.dp, Color.Gray, CircleShape)
+                )
 
-                // Статус
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = gameState.status.getDescription(gameState.getWinner()),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = statusColor,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.End
-                    )
+                Spacer(modifier = Modifier.width(8.dp))
 
-                    if (gameState.status.isGameOver()) {
-                        Text(
-                            text = gameState.status.getEmoji(),
-                            fontSize = 24.sp
-                        )
-                    }
-                }
+                Text(
+                    text = if (gameState.currentPlayer == Player.WHITE) "Ход белых" else "Ход чёрных",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
-            // Дополнительная информация во время игры
-            if (gameState.status.requiresPlayerAction()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                Spacer(modifier = Modifier.height(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = gameState.status.getDescription(gameState.getWinner()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = statusColor,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.End
+                )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+                if (gameState.status.isGameOver()) {
                     Text(
-                        text = "Ходов сделано: ${gameState.moveCount}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-
-                    Text(
-                        text = "Взято фигур: ${gameState.capturedPieces.size}",
-                        style = MaterialTheme.typography.bodySmall
+                        text = gameState.status.getEmoji(),
+                        fontSize = 20.sp
                     )
                 }
             }
