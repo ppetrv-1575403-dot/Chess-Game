@@ -1,8 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    //alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
-    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.kotlin.compose)
+    //alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -17,10 +19,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        vectorDrawables {
-            useSupportLibrary = true
-        }
     }
 
     buildTypes {
@@ -34,26 +32,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    kotlinOptions {
-        jvmTarget = "21"
-    }
-
-    buildFeatures {
-        compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.compose.compiler.get()
-    }
-
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
@@ -61,20 +41,32 @@ dependencies {
     // Compose
     implementation(platform(libs.compose.bom))
     implementation(libs.bundles.compose)
-    implementation(libs.material3.android)
     debugImplementation(libs.compose.ui.tooling)
+    //implementation(libs.compose.ui)
+    //implementation(libs.compose.material3)
+    //implementation(libs.compose.material.icons)
+    //implementation(libs.androidx.compose.material.icons.extended)
+
+    //compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
+    //compose-ui = { group = "androidx.compose.ui", name = "ui" }
+    //compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+    //compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+    //compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+    //compose-material-icons
 
     // Hilt
     implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler)
+    ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
     // Room
-    implementation(libs.bundles.room)
-    kapt(libs.room.compiler)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
 
     // Coroutines
-    implementation(libs.bundles.coroutines)
+    implementation(libs.coroutines.core)
+    implementation(libs.coroutines.android)
 
     // Core
     implementation(libs.core.ktx)
@@ -87,6 +79,7 @@ dependencies {
     androidTestImplementation(libs.compose.ui.tooling)
 }
 
+/*
 kapt {
     correctErrorTypes = true
-}
+}*/
