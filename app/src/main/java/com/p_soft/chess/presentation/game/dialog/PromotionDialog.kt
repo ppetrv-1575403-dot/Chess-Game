@@ -1,4 +1,4 @@
-package com.p_soft.chess.presentation.game
+package com.p_soft.chess.presentation.game.dialog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,7 +24,6 @@ import com.p_soft.chess.domain.model.Square
 import com.p_soft.chess.presentation.utils.getAvailablePromotions
 import com.p_soft.chess.presentation.utils.getPieceName
 import com.p_soft.chess.presentation.utils.getPieceUnicode
-import kotlin.collections.iterator
 
 /**
  * Диалог выбора фигуры для превращения пешки.
