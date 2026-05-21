@@ -12,8 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.p_soft.chess.domain.model.GameState
-import com.p_soft.chess.presentation.game.CapturedPiecesBar
-import com.p_soft.chess.presentation.game.GameControls
 
 @Composable
 fun BottomGamePanel(

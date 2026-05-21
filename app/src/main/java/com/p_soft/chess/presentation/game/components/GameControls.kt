@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.p_soft.chess.domain.model.GameStatus
 
 @Composable
-private fun GameControls(
+fun GameControls(
     onUndo: () -> Unit,
     onNewGame: () -> Unit,
     gameStatus: GameStatus

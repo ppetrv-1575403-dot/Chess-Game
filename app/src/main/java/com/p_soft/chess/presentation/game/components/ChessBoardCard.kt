@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.dp
 import com.p_soft.chess.domain.model.GameState
 import com.p_soft.chess.domain.model.Move
 import com.p_soft.chess.domain.model.Square
-import com.p_soft.chess.presentation.game.ChessBoard
 
 @Composable
 fun ChessBoardCard(

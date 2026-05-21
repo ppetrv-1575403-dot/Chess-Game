@@ -11,8 +11,6 @@ import com.p_soft.chess.domain.model.GameStatus
 import com.p_soft.chess.domain.model.Move
 import com.p_soft.chess.domain.model.PieceType
 import com.p_soft.chess.domain.model.Square
-import com.p_soft.chess.presentation.game.ChessSquare
-import com.p_soft.chess.presentation.game.CoordinateRow
 
 @Composable
 fun ChessBoard(

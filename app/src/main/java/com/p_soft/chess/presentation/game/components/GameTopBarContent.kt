@@ -28,8 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.p_soft.chess.domain.model.GameState
 import com.p_soft.chess.domain.model.Player
-import com.p_soft.chess.presentation.game.StatusBadge
-
 
 @Composable
 fun GameTopBarContent(
