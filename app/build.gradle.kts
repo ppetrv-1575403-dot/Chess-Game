@@ -1,20 +1,18 @@
 plugins {
     alias(libs.plugins.android.application)
-    //alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.compose)
-    //alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.p_soft.chess"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.p_soft.chess"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -42,17 +40,6 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.bundles.compose)
     debugImplementation(libs.compose.ui.tooling)
-    //implementation(libs.compose.ui)
-    //implementation(libs.compose.material3)
-    //implementation(libs.compose.material.icons)
-    //implementation(libs.androidx.compose.material.icons.extended)
-
-    //compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
-    //compose-ui = { group = "androidx.compose.ui", name = "ui" }
-    //compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-    //compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-    //compose-material3 = { group = "androidx.compose.material3", name = "material3" }
-    //compose-material-icons
 
     // Hilt
     implementation(libs.hilt.android)
@@ -78,8 +65,3 @@ dependencies {
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.tooling)
 }
-
-/*
-kapt {
-    correctErrorTypes = true
-}*/

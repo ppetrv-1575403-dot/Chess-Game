@@ -23,6 +23,7 @@ import com.p_soft.chess.domain.model.Player
 import com.p_soft.chess.domain.model.Square
 import com.p_soft.chess.presentation.utils.getAvailablePromotions
 import com.p_soft.chess.presentation.utils.getPieceName
+import com.p_soft.chess.presentation.utils.getPieceUnicode
 import kotlin.collections.iterator
 
 /**

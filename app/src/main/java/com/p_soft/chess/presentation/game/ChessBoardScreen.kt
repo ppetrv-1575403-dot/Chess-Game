@@ -1,11 +1,15 @@
 package com.p_soft.chess.presentation.game
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,11 +25,14 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.p_soft.chess.domain.model.GameState
+import com.p_soft.chess.domain.model.GameStatus
 import com.p_soft.chess.domain.model.Move
 import com.p_soft.chess.domain.model.Piece
 import com.p_soft.chess.domain.model.PieceType
 import com.p_soft.chess.domain.model.Player
 import com.p_soft.chess.domain.model.Square
+import com.p_soft.chess.presentation.utils.getPieceUnicode
+import kotlin.text.get
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,53 +43,140 @@ fun ChessBoardScreen(
     var selectedSquare by remember { mutableStateOf<Square?>(null) }
     var validMoves by remember { mutableStateOf<List<Move>>(emptyList()) }
 
-    LaunchedEffect(null) {
-        viewModel.gameInteractor.loadGame()
-    }
+    // Определяем ориентацию экрана
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Chess Master",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shadowElevation = 4.dp,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                GameTopBarContent(
+                    gameState = gameState,
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-            )
+            }
+        },
+        bottomBar = {
+            if (!isLandscape) {
+                // В портретной ориентации — нижняя панель
+                BottomGamePanel(
+                    gameState = gameState,
+                    onUndo = {
+                        viewModel.undoMove()
+                        selectedSquare = null
+                        validMoves = emptyList()
+                    },
+                    onNewGame = {
+                        viewModel.startNewGame()
+                        selectedSquare = null
+                        validMoves = emptyList()
+                    }
+                )
+            }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Статус игры
-            GameStatusBar(gameState = gameState)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Шахматная доска
-            Card(
+        if (isLandscape) {
+            // ГОРИЗОНТАЛЬНАЯ ОРИЕНТАЦИЯ — доска слева, управление справа
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f),
-                shape = RoundedCornerShape(8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ChessBoard(
+                // Шахматная доска (занимает 70% ширины)
+                Box(
+                    modifier = Modifier
+                        .weight(0.7f)
+                        .fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ChessBoardCard(
+                        gameState = gameState,
+                        selectedSquare = selectedSquare,
+                        validMoves = validMoves,
+                        onSquareClick = { square ->
+                            if (!gameState.status.requiresPlayerAction()) return@ChessBoardCard
+                            if (gameState.pendingPromotion != null) return@ChessBoardCard
+
+                            if (selectedSquare == null) {
+                                val piece = gameState.board[square]
+                                if (piece != null && piece.player == gameState.currentPlayer) {
+                                    selectedSquare = square
+                                    validMoves = viewModel.getValidMoves(square)
+                                }
+                            } else {
+                                if (square == selectedSquare) {
+                                    selectedSquare = null
+                                    validMoves = emptyList()
+                                } else {
+                                    val clickedPiece = gameState.board[square]
+                                    if (clickedPiece != null && clickedPiece.player == gameState.currentPlayer) {
+                                        selectedSquare = square
+                                        validMoves = viewModel.getValidMoves(square)
+                                    } else {
+                                        viewModel.onSquareClick(square, selectedSquare)
+                                        selectedSquare = null
+                                        validMoves = emptyList()
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
+
+                // Панель управления (30% ширины)
+                Column(
+                    modifier = Modifier
+                        .weight(0.3f)
+                        .fillMaxHeight(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Захваченные фигуры
+                    CapturedPiecesVertical(gameState = gameState)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Кнопки управления
+                    GameControlsVertical(
+                        onUndo = {
+                            viewModel.undoMove()
+                            selectedSquare = null
+                            validMoves = emptyList()
+                        },
+                        onNewGame = {
+                            viewModel.startNewGame()
+                            selectedSquare = null
+                            validMoves = emptyList()
+                        },
+                        gameStatus = gameState.status
+                    )
+                }
+            }
+        } else {
+            // ПОРТРЕТНАЯ ОРИЕНТАЦИЯ — доска сверху, управление снизу
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                ChessBoardCard(
                     gameState = gameState,
                     selectedSquare = selectedSquare,
                     validMoves = validMoves,
                     onSquareClick = { square ->
-                        if (!gameState.status.requiresPlayerAction()) return@ChessBoard
-                        if (gameState.pendingPromotion != null) return@ChessBoard
+                        if (!gameState.status.requiresPlayerAction()) return@ChessBoardCard
+                        if (gameState.pendingPromotion != null) return@ChessBoardCard
 
                         if (selectedSquare == null) {
                             val piece = gameState.board[square]
@@ -99,21 +194,7 @@ fun ChessBoardScreen(
                                     selectedSquare = square
                                     validMoves = viewModel.getValidMoves(square)
                                 } else {
-                                    // ИСПРАВЛЕНО: Правильно обрабатываем ход с превращением
-                                    val piece = gameState.board[selectedSquare!!]
-                                    val isPromotionMove = piece?.type == PieceType.PAWN &&
-                                            square.row == (if (piece.player == Player.WHITE) 7 else 0)
-
-                                    if (isPromotionMove) {
-                                        // Создаём ход без promotion (будет показан диалог)
-                                        val move = Move(selectedSquare!!, square)
-                                        viewModel.makeMove(move)
-                                    } else {
-                                        // Обычный ход
-                                        val move = Move(selectedSquare!!, square)
-                                        viewModel.makeMove(move)
-                                    }
-
+                                    viewModel.onSquareClick(square, selectedSquare)
                                     selectedSquare = null
                                     validMoves = emptyList()
                                 }
@@ -122,32 +203,10 @@ fun ChessBoardScreen(
                     }
                 )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Захваченные фигуры
-            CapturedPiecesBar(gameState = gameState)
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Кнопки управления
-            GameControls(
-                onUndo = {
-                    viewModel.undoMove()
-                    selectedSquare = null
-                    validMoves = emptyList()
-                },
-                onNewGame = {
-                    viewModel.startNewGame()
-                    selectedSquare = null
-                    validMoves = emptyList()
-                },
-                gameStatus = gameState.status
-            )
         }
     }
 
-    // Диалог выбора фигуры для превращения пешки
+    // Диалог превращения пешки
     if (gameState.pendingPromotion != null) {
         PromotionDialog(
             player = gameState.currentPlayer,
@@ -163,126 +222,131 @@ fun ChessBoardScreen(
 }
 
 @Composable
-private fun ChessBoard(
+private fun ChessBoardCard(
     gameState: GameState,
     selectedSquare: Square?,
     validMoves: List<Move>,
     onSquareClick: (Square) -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize()
+    // Адаптивный размер доски — занимает максимум доступного пространства
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        // Верхняя координатная строка (буквы a-h)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(24.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+        val maxSize = minOf(maxWidth, maxHeight)
+
+        Card(
+            modifier = Modifier.size(maxSize),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
         ) {
-            Spacer(modifier = Modifier.width(24.dp))
-            for (col in 0..7) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = ('a' + col).toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(24.dp))
+            ChessBoard(
+                gameState = gameState,
+                selectedSquare = selectedSquare,
+                validMoves = validMoves,
+                onSquareClick = onSquareClick
+            )
         }
+    }
+}
 
-        // Ряды доски (8 рядов сверху вниз: 8,7,6,5,4,3,2,1)
-        for (row in 7 downTo 0) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                // Левая координата (цифра)
+@Composable
+private fun GameTopBarContent(
+    gameState: GameState,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AnimatedContent(
+                targetState = gameState.currentPlayer,
+                transitionSpec = {
+                    fadeIn() + scaleIn() togetherWith fadeOut() + scaleOut()
+                },
+                label = "player_indicator"
+            ) { player ->
                 Box(
                     modifier = Modifier
-                        .width(24.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = (row + 1).toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (player == Player.WHITE) Color.White
+                            else Color(0xFF1A1A1A)
+                        )
+                        .border(2.dp, Color.Gray, CircleShape)
+                )
+            }
 
-                // 8 клеток в ряду
-                for (col in 0..7) {
-                    val square = Square(row, col)
-                    val isLight = (row + col) % 2 == 0
-                    val isSelected = square == selectedSquare
-                    val isValidMove = validMoves.any { it.to == square }
-                    val isLastMoveFrom = gameState.moveHistory.lastOrNull()?.from == square
-                    val isLastMoveTo = gameState.moveHistory.lastOrNull()?.to == square
+            Spacer(modifier = Modifier.width(8.dp))
 
-                    ChessSquare(
-                        modifier = Modifier.weight(1f),
-                        isLight = isLight,
-                        isSelected = isSelected,
-                        isValidMove = isValidMove,
-                        isLastMove = isLastMoveFrom || isLastMoveTo,
-                        piece = gameState.board[square],
-                        onClick = { onSquareClick(square) }
-                    )
-                }
-
-                // Правая координата (цифра)
-                Box(
-                    modifier = Modifier
-                        .width(24.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = (row + 1).toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            Column {
+                Text(
+                    text = "Ход ${gameState.fullMoveNumber}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = if (gameState.currentPlayer == Player.WHITE) "Белые" else "Чёрные",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                )
             }
         }
 
-        // Нижняя координатная строка (буквы a-h)
-        Row(
+        StatusBadge(status = gameState.status, winner = gameState.getWinner())
+    }
+}
+
+@Composable
+private fun StatusBadge(status: GameStatus, winner: Player?) {
+    val (bgColor, text, textColor) = when (status) {
+        GameStatus.ACTIVE -> Triple(Color(0xFF4CAF50).copy(alpha = 0.15f), null, Color(0xFF4CAF50))
+        GameStatus.CHECK -> Triple(Color(0xFFFF9800).copy(alpha = 0.2f), "ШАХ", Color(0xFFFF9800))
+        GameStatus.CHECKMATE -> Triple(Color(0xFFF44336).copy(alpha = 0.2f), "МАТ", Color(0xFFF44336))
+        GameStatus.STALEMATE -> Triple(Color(0xFF2196F3).copy(alpha = 0.2f), "ПАТ", Color(0xFF2196F3))
+        else -> Triple(Color(0xFF9E9E9E).copy(alpha = 0.15f), null, Color(0xFF9E9E9E))
+    }
+
+    text?.let {
+        Surface(color = bgColor, shape = RoundedCornerShape(12.dp)) {
+            Text(
+                text = it,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                color = textColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                letterSpacing = 1.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun BottomGamePanel(
+    gameState: GameState,
+    onUndo: () -> Unit,
+    onNewGame: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shadowElevation = 8.dp,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
+    ) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(24.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            Spacer(modifier = Modifier.width(24.dp))
-            for (col in 0..7) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = ('a' + col).toString(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(24.dp))
+            CapturedPiecesBar(gameState = gameState)
+            Spacer(modifier = Modifier.height(8.dp))
+            GameControls(onUndo = onUndo, onNewGame = onNewGame, gameStatus = gameState.status)
         }
     }
 }
@@ -294,47 +358,239 @@ private fun CapturedPiecesBar(gameState: GameState) {
 
     if (whiteCaptured.isEmpty() && blackCaptured.isEmpty()) return
 
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(1.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("♟: ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                whiteCaptured.forEach { piece ->
-                    Text(
-                        text = getPieceUnicode(piece),
-                        fontSize = 14.sp,
-                        modifier = Modifier.alpha(0.7f)
-                    )
-                }
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                blackCaptured.forEach { piece ->
-                    Text(
-                        text = getPieceUnicode(piece),
-                        fontSize = 14.sp,
-                        modifier = Modifier.alpha(0.7f)
-                    )
-                }
-                Text(" :♙", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("♟", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+            whiteCaptured.forEach { piece ->
+                Text(
+                    text = getPieceUnicode(piece),
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.alpha(0.8f)
+                )
             }
         }
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(1.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            blackCaptured.forEach { piece ->
+                Text(
+                    text = getPieceUnicode(piece),
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.alpha(0.8f)
+                )
+            }
+            Text("♙", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+        }
+    }
+}
+
+@Composable
+private fun CapturedPiecesVertical(gameState: GameState) {
+    val whiteCaptured = gameState.capturedPieces.filter { it.player == Player.BLACK }
+    val blackCaptured = gameState.capturedPieces.filter { it.player == Player.WHITE }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        // Взятые белые фигуры
+        Text("Взято белыми:", style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (whiteCaptured.isEmpty()) {
+            Text("—", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                whiteCaptured.forEach { piece ->
+                    Text(getPieceUnicode(piece), fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Взятые чёрные фигуры
+        Text("Взято чёрными:", style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (blackCaptured.isEmpty()) {
+            Text("—", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                blackCaptured.forEach { piece ->
+                    Text(getPieceUnicode(piece), fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GameControls(
+    onUndo: () -> Unit,
+    onNewGame: () -> Unit,
+    gameStatus: GameStatus
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        FilledTonalButton(
+            onClick = onUndo,
+            enabled = gameStatus.requiresPlayerAction(),
+            modifier = Modifier.weight(1f).height(44.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Undo, null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Отменить", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+        }
+
+        Button(
+            onClick = onNewGame,
+            modifier = Modifier.weight(1f).height(44.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Новая игра", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+private fun GameControlsVertical(
+    onUndo: () -> Unit,
+    onNewGame: () -> Unit,
+    gameStatus: GameStatus
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilledTonalButton(
+            onClick = onUndo,
+            enabled = gameStatus.requiresPlayerAction(),
+            modifier = Modifier.fillMaxWidth().height(44.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Undo, null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Отменить", fontSize = 12.sp)
+        }
+
+        Button(
+            onClick = onNewGame,
+            modifier = Modifier.fillMaxWidth().height(44.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Новая игра", fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun ChessBoard(
+    gameState: GameState,
+    selectedSquare: Square?,
+    validMoves: List<Move>,
+    onSquareClick: (Square) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        CoordinateRow(labels = ('a'..'h').map { it.toString() })
+
+        for (row in 7 downTo 0) {
+            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                CoordinateLabel(text = (row + 1).toString())
+
+                for (col in 0..7) {
+                    val square = Square(row, col)
+                    val isLight = (row + col) % 2 == 0
+                    val isSelected = square == selectedSquare
+                    val isValidMove = validMoves.any { it.to == square }
+                    val isLastMove = gameState.moveHistory.lastOrNull()?.let {
+                        it.from == square || it.to == square
+                    } ?: false
+                    val isKingInCheck = gameState.status == GameStatus.CHECK &&
+                            gameState.board[square]?.type == PieceType.KING &&
+                            gameState.board[square]?.player == gameState.currentPlayer
+
+                    ChessSquare(
+                        modifier = Modifier.weight(1f),
+                        isLight = isLight,
+                        isSelected = isSelected,
+                        isValidMove = isValidMove,
+                        isLastMove = isLastMove,
+                        isKingInCheck = isKingInCheck,
+                        piece = gameState.board[square],
+                        onClick = { onSquareClick(square) }
+                    )
+                }
+
+                CoordinateLabel(text = (row + 1).toString())
+            }
+        }
+
+        CoordinateRow(labels = ('a'..'h').map { it.toString() })
+    }
+}
+
+@Composable
+private fun CoordinateRow(labels: List<String>) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(20.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Spacer(modifier = Modifier.width(20.dp))
+        labels.forEach { label ->
+            Box(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    fontSize = 9.sp
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(20.dp))
+    }
+}
+
+@Composable
+private fun CoordinateLabel(text: String) {
+    Box(
+        modifier = Modifier
+            .width(20.dp)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            fontSize = 9.sp
+        )
     }
 }
 
@@ -345,15 +601,26 @@ private fun ChessSquare(
     isSelected: Boolean,
     isValidMove: Boolean,
     isLastMove: Boolean,
+    isKingInCheck: Boolean,
     piece: Piece?,
     onClick: () -> Unit
 ) {
-    val backgroundColor = when {
-        isSelected -> Color(0xFF7CB342)
-        isLastMove -> if (isLight) Color(0xFFF7F769) else Color(0xFFB5B53B)
-        isLight -> Color(0xFFF0D9B5)
-        else -> Color(0xFFB58863)
-    }
+    val lightColor = Color(0xFFF0D9B5)
+    val darkColor = Color(0xFFB58863)
+    val selectedColor = Color(0xFF7CB342)
+    val checkColor = Color(0xFFE53935)
+
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            isKingInCheck -> checkColor.copy(alpha = 0.6f)
+            isSelected -> selectedColor
+            isLastMove -> if (isLight) Color(0xFFF7F769).copy(alpha = 0.6f) else Color(0xFFB5B53B).copy(alpha = 0.5f)
+            isLight -> lightColor
+            else -> darkColor
+        },
+        animationSpec = tween(300),
+        label = "cell_color"
+    )
 
     Box(
         modifier = modifier
@@ -362,8 +629,11 @@ private fun ChessSquare(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        // Индикатор возможного хода (пустая клетка)
-        if (isValidMove && piece == null) {
+        AnimatedVisibility(
+            visible = isValidMove && piece == null,
+            enter = scaleIn() + fadeIn(),
+            exit = scaleOut() + fadeOut()
+        ) {
             Box(
                 modifier = Modifier
                     .size(24.dp)
@@ -372,36 +642,35 @@ private fun ChessSquare(
             )
         }
 
-        // Индикатор возможного взятия (клетка с фигурой противника)
-        if (isValidMove && piece != null) {
+        AnimatedVisibility(
+            visible = isValidMove && piece != null,
+            enter = scaleIn() + fadeIn(),
+            exit = scaleOut() + fadeOut()
+        ) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize(0.9f)
-                    .border(4.dp, Color.Red.copy(alpha = 0.6f), CircleShape)
+                    .fillMaxSize(0.8f)
+                    .border(3.dp, Color(0xFFE53935).copy(alpha = 0.7f), CircleShape)
             )
         }
 
-        // Фигура
-        piece?.let {
-            Text(
-                text = getPieceUnicode(it),
-                fontSize = 38.sp,
-                color = if (it.player == Player.WHITE) Color.White else Color.Black,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.offset(y = (-2).dp)
-            )
+        AnimatedContent(
+            targetState = piece,
+            transitionSpec = {
+                (scaleIn(initialScale = 0.5f) + fadeIn()) togetherWith
+                        (scaleOut(targetScale = 0.5f) + fadeOut())
+            },
+            label = "piece"
+        ) { currentPiece ->
+            currentPiece?.let {
+                Text(
+                    text = getPieceUnicode(it),
+                    fontSize = 36.sp,
+                    color = if (it.player == Player.WHITE) Color.White else Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
-    }
-}
-
-fun getPieceUnicode(piece: Piece): String {
-    return when (piece.type) {
-        PieceType.KING -> if (piece.player == Player.WHITE) "♔" else "♚"
-        PieceType.QUEEN -> if (piece.player == Player.WHITE) "♕" else "♛"
-        PieceType.ROOK -> if (piece.player == Player.WHITE) "♖" else "♜"
-        PieceType.BISHOP -> if (piece.player == Player.WHITE) "♗" else "♝"
-        PieceType.KNIGHT -> if (piece.player == Player.WHITE) "♘" else "♞"
-        PieceType.PAWN -> if (piece.player == Player.WHITE) "♙" else "♟"
     }
 }

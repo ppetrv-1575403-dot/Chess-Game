@@ -48,12 +48,6 @@ fun getAvailablePromotions(
     return result
 }
 
-fun isNoAvailablePromotions(player: Player,
-                            currentPieces: Map<Square, Piece>): Boolean {
-    val availablePromotions = getAvailablePromotions(player, currentPieces)
-    return availablePromotions.isEmpty()
-}
-
 fun getPieceName(type: PieceType): String {
     return when (type) {
         PieceType.QUEEN -> "Ферзь"
@@ -66,10 +60,11 @@ fun getPieceName(type: PieceType): String {
 
 fun getPieceUnicode(piece: Piece): String {
     return when (piece.type) {
+        PieceType.KING -> if (piece.player == Player.WHITE) "♔" else "♚"
         PieceType.QUEEN -> if (piece.player == Player.WHITE) "♕" else "♛"
         PieceType.ROOK -> if (piece.player == Player.WHITE) "♖" else "♜"
         PieceType.BISHOP -> if (piece.player == Player.WHITE) "♗" else "♝"
         PieceType.KNIGHT -> if (piece.player == Player.WHITE) "♘" else "♞"
-        else -> ""
+        PieceType.PAWN -> if (piece.player == Player.WHITE) "♙" else "♟"
     }
 }
