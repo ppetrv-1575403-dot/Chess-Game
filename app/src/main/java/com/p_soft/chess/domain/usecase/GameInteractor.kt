@@ -29,6 +29,12 @@ class GameInteractor @Inject constructor(
     private val _gameState = MutableStateFlow(GameState.initial())
     val gameState: StateFlow<GameState> = _gameState.asStateFlow()
 
+    val noHistory: Boolean
+        get() {
+            val currentState = _gameState.value
+            return currentState.moveHistory.isEmpty()
+        }
+
     fun startNewGame() {
         _gameState.value = GameState.initial().start()
         saveGameAsync()

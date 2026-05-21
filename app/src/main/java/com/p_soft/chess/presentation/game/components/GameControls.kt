@@ -30,7 +30,8 @@ import com.p_soft.chess.presentation.theme.darkCancelColorDisabled
 fun GameControls(
     onUndo: () -> Unit,
     onNewGame: () -> Unit,
-    gameStatus: GameStatus
+    gameStatus: GameStatus,
+    undoAvailable: Boolean = false
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -38,7 +39,7 @@ fun GameControls(
     ) {
         FilledTonalButton(
             onClick = onUndo,
-            enabled = gameStatus.requiresPlayerAction(),
+            enabled = gameStatus.requiresPlayerAction() && undoAvailable,
             modifier = Modifier.weight(1f).height(44.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonColors(

@@ -10,6 +10,7 @@ import com.p_soft.chess.domain.usecase.GameInteractor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -25,6 +26,10 @@ class GameViewModel @Inject constructor(
             SharingStarted.WhileSubscribed(5000),
             GameState.initial()
         )
+
+    init {
+        gameInteractor.loadGame()
+    }
 
     fun onSquareClick(square: Square, selectedSquare: Square?) {
         val currentState = gameState.value

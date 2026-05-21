@@ -12,6 +12,12 @@ data class GameState(
     val halfMoveClock: Int = 0,
     val fullMoveNumber: Int = 1
 ) {
+
+    val noHistory: Boolean
+        get() {
+            return moveHistory.isEmpty()
+        }
+
     companion object {
         fun initial(): GameState {
             val pieces = mutableMapOf<Square, Piece>()

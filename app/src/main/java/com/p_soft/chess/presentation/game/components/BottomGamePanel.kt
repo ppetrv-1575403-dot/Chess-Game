@@ -31,7 +31,10 @@ fun BottomGamePanel(
         ) {
             CapturedPiecesBar(gameState = gameState)
             Spacer(modifier = Modifier.height(8.dp))
-            GameControls(onUndo = onUndo, onNewGame = onNewGame, gameStatus = gameState.status)
+            GameControls(onUndo = onUndo, onNewGame = onNewGame,
+                gameStatus = gameState.status,
+                !gameState.noHistory
+            )
         }
     }
 }
