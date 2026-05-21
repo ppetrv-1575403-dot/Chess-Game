@@ -66,12 +66,12 @@ fun GameTopBarContent(
                     text = "Ход ${gameState.fullMoveNumber}",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = Color.Gray
                 )
                 Text(
                     text = if (gameState.currentPlayer == Player.WHITE) "Белые" else "Чёрные",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    color = Color.Gray
                 )
             }
         }

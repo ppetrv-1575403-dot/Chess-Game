@@ -37,7 +37,7 @@ fun ChessBoardScreen(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shadowElevation = 4.dp,
-                color = MaterialTheme.colorScheme.primaryContainer
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
             ) {
                 GameTopBarContent(
                     gameState = gameState,

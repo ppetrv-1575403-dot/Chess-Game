@@ -10,9 +10,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF6750A4),
+    primary = darkSquareColor1,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFEADDFF),
+    primaryContainer = darkSquareColor1,
     onPrimaryContainer = Color(0xFF21005D),
     secondary = Color(0xFF625B71),
     onSecondary = Color.White,
@@ -30,9 +30,9 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFD0BCFF),
+    primary = darkSquareColor2,
     onPrimary = Color(0xFF381E72),
-    primaryContainer = Color(0xFF4F378B),
+    primaryContainer = darkSquareColor2,
     onPrimaryContainer = Color(0xFFEADDFF),
     secondary = Color(0xFFCCC2DC),
     onSecondary = Color(0xFF332D41),

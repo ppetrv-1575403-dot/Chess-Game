@@ -12,15 +12,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.p_soft.chess.domain.model.GameStatus
+import com.p_soft.chess.presentation.theme.darkCancelColor
+import com.p_soft.chess.presentation.theme.darkCancelColorDisabled
 
 @Composable
 fun GameControls(
@@ -36,7 +40,13 @@ fun GameControls(
             onClick = onUndo,
             enabled = gameStatus.requiresPlayerAction(),
             modifier = Modifier.weight(1f).height(44.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonColors(
+                containerColor = darkCancelColor,
+                contentColor = Color.White,
+                disabledContainerColor = darkCancelColorDisabled,
+                disabledContentColor = Color.DarkGray
+            )
         ) {
             Icon(Icons.Default.Undo, null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(4.dp))
