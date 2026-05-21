@@ -89,6 +89,17 @@ class GameRepositoryImpl @Inject constructor(
         json.put("moveHistory", movesJson)
         json.put("currentPlayer", state.currentPlayer.name)
 
+        val capturedPiecesJson = JSONArray()
+        state.capturedPieces.forEach { piece ->
+            val pieceJson = JSONObject().apply {
+                put("type", piece.type.name)
+                put("player", piece.player.name)
+                put("hasMoved", piece.hasMoved)
+            }
+            capturedPiecesJson.put(pieceJson)
+        }
+        json.put("capturedPieces", capturedPiecesJson)
+
         return json.toString()
     }
 
@@ -128,10 +139,23 @@ class GameRepositoryImpl @Inject constructor(
 
         val currentPlayer = Player.valueOf(jsonObj.getString("currentPlayer"))
 
+        val capturedPiecesJson = jsonObj.getJSONArray("capturedPieces")
+        val capturedPieces = mutableListOf<Piece>()
+        for (i in 0 until capturedPiecesJson.length()) {
+            val pieceJson = capturedPiecesJson.getJSONObject(i)
+            val piece = Piece(
+                type = PieceType.valueOf(pieceJson.getString("type")),
+                player = Player.valueOf(pieceJson.getString("player")),
+                hasMoved = pieceJson.getBoolean("hasMoved")
+            )
+            capturedPieces.add(piece)
+        }
+
         return BoardState(
             pieces = pieces,
             currentPlayer = currentPlayer,
-            moveHistory = moveHistory
+            moveHistory = moveHistory,
+            capturedPieces = capturedPieces
         )
     }
 }

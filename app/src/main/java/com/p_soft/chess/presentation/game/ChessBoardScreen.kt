@@ -1,6 +1,5 @@
 package com.p_soft.chess.presentation.game
 
-import GameControls
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -312,7 +311,7 @@ private fun CapturedPiecesBar(gameState: GameState) {
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("♟:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("♟: ", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 whiteCaptured.forEach { piece ->
                     Text(
                         text = getPieceUnicode(piece),
@@ -333,7 +332,7 @@ private fun CapturedPiecesBar(gameState: GameState) {
                         modifier = Modifier.alpha(0.7f)
                     )
                 }
-                Text("♙:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(" :♙", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
