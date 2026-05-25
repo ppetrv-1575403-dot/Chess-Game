@@ -5,7 +5,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -17,6 +16,7 @@ import com.p_soft.chess.presentation.game.components.ChessBoardCard
 import com.p_soft.chess.presentation.game.components.GameControlsVertical
 import com.p_soft.chess.presentation.game.components.GameTopBarContent
 import com.p_soft.chess.presentation.game.dialog.PromotionDialog
+import com.p_soft.chess.presentation.utils.isLandscape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,8 +28,7 @@ fun ChessBoardScreen(
     var validMoves by remember { mutableStateOf<List<Move>>(emptyList()) }
 
     // Определяем ориентацию экрана
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+    val isLandscape = isLandscape()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

@@ -2,7 +2,7 @@ package com.p_soft.chess.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
-val lightSquareColor = Color(0xFFF5E6D3) // Тёплый кремовый
+val lightSquareColor = Color(0xFFF5E6D3) // Тёплый кремовый0
 
 val darkSquareColor = Color(0xFF8B7355)  // Тёплый коричневый
 val darkSquareColor1 = Color(0xAF8B7355)  // Тёплый коричневый

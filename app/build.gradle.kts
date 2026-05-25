@@ -54,6 +54,7 @@ dependencies {
     // Coroutines
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
+    implementation(libs.coroutines.test)
 
     // Core
     implementation(libs.core.ktx)
@@ -64,4 +65,7 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.tooling)
+    testImplementation(libs.mockk)
+    testImplementation(libs.mockk.android)
+    androidTestImplementation(libs.coroutines.core.testing)
 }

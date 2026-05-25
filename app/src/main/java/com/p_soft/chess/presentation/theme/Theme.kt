@@ -9,10 +9,28 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
+data class ColorPalette(
+    val mainColor: Color = Color.White,
+    val singleTheme: Color = Color.White,
+    val oppositeTheme: Color = Color.White,
+    val startGameBtnColor: Color = Color.White,
+    val startGameBtnTextColor: Color = Color.White,
+    val cancelBtnColor: Color = Color.White,
+    val cancelBtnTextColor: Color = Color.White
+)
+
+val lightColorPalette = ColorPalette(
+
+)
+
+val darkColorPalette = ColorPalette(
+
+)
+
 private val LightColorScheme = lightColorScheme(
-    primary = darkSquareColor1,
+    primary = darkSquareColor2,
     onPrimary = Color.White,
-    primaryContainer = darkSquareColor1,
+    primaryContainer = darkSquareColor2,
     onPrimaryContainer = Color(0xFF21005D),
     secondary = Color(0xFF625B71),
     onSecondary = Color.White,

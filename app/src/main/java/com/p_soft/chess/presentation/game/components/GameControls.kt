@@ -46,7 +46,7 @@ fun GameControls(
                 containerColor = darkCancelColor,
                 contentColor = Color.White,
                 disabledContainerColor = darkCancelColorDisabled,
-                disabledContentColor = Color.DarkGray
+                disabledContentColor = Color.Gray
             )
         ) {
             Icon(Icons.Default.Undo, null, modifier = Modifier.size(18.dp))
