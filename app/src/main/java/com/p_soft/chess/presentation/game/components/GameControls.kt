@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import com.p_soft.chess.domain.model.GameStatus
 import com.p_soft.chess.presentation.theme.darkCancelColor
 import com.p_soft.chess.presentation.theme.darkCancelColorDisabled
+import com.p_soft.chess.presentation.theme.darkSquareColor
+import com.p_soft.chess.presentation.theme.darkSquareColor2
 
 @Composable
 fun GameControls(
@@ -57,7 +59,13 @@ fun GameControls(
         Button(
             onClick = onNewGame,
             modifier = Modifier.weight(1f).height(44.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonColors(
+                containerColor = darkSquareColor,
+                contentColor = Color.White,
+                disabledContainerColor = darkCancelColorDisabled,
+                disabledContentColor = Color.Gray
+            )
         ) {
             Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(4.dp))

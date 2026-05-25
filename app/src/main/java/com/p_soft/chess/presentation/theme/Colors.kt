@@ -8,7 +8,7 @@ val darkSquareColor = Color(0xFF8B7355)  // Тёплый коричневый
 val darkSquareColor1 = Color(0xAF8B7355)  // Тёплый коричневый
 val darkSquareColor2 = Color(0x4F8B7355)  // Тёплый коричневый
 
-val darkCancelColor = Color(0xAF892E36)  // Тёплый красный
+val darkCancelColor = Color(0xFF892E36)  // Тёплый красный
 val darkCancelColorDisabled = Color(0xAF898989)  // Тёплый красный
 
 val selectedColor = Color(0xFF81C784)     // Мягкий зелёный
