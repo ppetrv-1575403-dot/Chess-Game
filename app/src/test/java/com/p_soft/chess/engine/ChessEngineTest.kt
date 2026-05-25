@@ -31,10 +31,10 @@ class ChessEngineTest {
 
     @Test
     fun `initial board has correct piece distribution`() {
-        val whitePawns = initialState?.board?.values?.count {
+        val whitePawns = initialState.board.values.count {
             it.type == PieceType.PAWN && it.player == Player.WHITE
         }
-        val blackPawns = initialState?.board?.values?.count {
+        val blackPawns = initialState.board.values.count {
             it.type == PieceType.PAWN && it.player == Player.BLACK
         }
 
