@@ -1,10 +1,10 @@
 [versions]
 agp = "8.6.0"
-kotlin = "1.9.20"
-compose-bom = "2023.10.01"
-compose-compiler = "1.5.4"
+kotlin = "1.9.24"             # Обновлено для совместимости
+compose-bom = "2024.06.00"    # Обновлено (содержит Material3 1.2.x с HorizontalDivider)
+compose-compiler = "1.5.14"   # Должно строго соответствовать версии Kotlin 1.9.24
 hilt = "2.48.1"
-hilt-navigation-compose = "1.1.0"
+hilt-navigation-compose = "1.2.0"
 room = "2.6.1"
 coroutines = "1.7.3"
 lifecycle = "2.6.2"
