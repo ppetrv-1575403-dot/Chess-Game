@@ -36,7 +36,7 @@ android {
     signingConfigs {
         create("release") {
             // Путь берётся из переменной окружения GitHub Actions
-            storeFile = file(System.getenv("KEYSTORE_PATH") ?: "release-key.jks")
+            storeFile = file(System.getenv("KEYSTORE_PATH") ?: "../release-key.jks")
             storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
             keyAlias = System.getenv("KEY_ALIAS") ?: ""
             keyPassword = System.getenv("KEY_PASSWORD") ?: ""
