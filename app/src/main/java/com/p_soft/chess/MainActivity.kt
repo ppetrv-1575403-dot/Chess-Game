@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.p_soft.chess.presentation.game.ChessBoardScreen
 import com.p_soft.chess.presentation.theme.ChessMasterTheme
-import com.p_soft.chess.ui.theme.ChessTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 // MainActivity.kt
