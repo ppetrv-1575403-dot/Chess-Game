@@ -1,0 +1,100 @@
+name: Build & Release APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+# Разрешаем workflow создавать релизы и писать в репозиторий
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Сборка и публикация APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Скачиваем код
+      - name: Checkout кода
+        uses: actions/checkout@v4
+
+      # 2. JDK 17
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. Gradle с кэшем
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: wrapper
+
+      # 4. Права на gradlew
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 5. Декодируем keystore
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -di > release-key.jks
+
+      # 6. Собираем Debug APK
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      # 7. Собираем подписанный Release APK
+      - name: Build Release APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/release-key.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      # 8. Артефакт: Debug
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: chess-game-debug
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      # 9. Артефакт: Release
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: chess-game-release
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 30
+
+      # 10. Создаём GitHub Release ТОЛЬКО при пуше тега (v*)
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Chess Game ${{ github.ref_name }}
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 11. Отправляем Release APK в Telegram
+      - name: Send APK to Telegram
+        if: success()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          document: app/build/outputs/apk/release/app-release.apk
+          message: |
+            ♟️ Chess Game — новая сборка готова!
+            Версия/ветка: ${{ github.ref_name }}
+            Автор: ${{ github.actor }}
