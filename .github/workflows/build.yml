@@ -41,20 +41,23 @@ jobs:
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -di > release-key.jks
-
-      - name: Set Keystore env vars
+          
+      # 6. Собираем Debug APK
+      - name: Build Debug APK
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release-key.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          
-      # 6. Собираем Debug APK
-      - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon
 
       # 7. Собираем подписанный Release APK
       - name: Build Release APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/release-key.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon
 
       # 8. Артефакт: Debug
