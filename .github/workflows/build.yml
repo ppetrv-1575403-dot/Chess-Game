@@ -20,7 +20,7 @@ jobs:
       - name: Checkout кода
         uses: actions/checkout@v4
 
-      # 2. JDK 17
+      # 2. JDK setup
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
@@ -42,17 +42,19 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -di > release-key.jks
 
+      - name: Set Keystore env vars
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/release-key.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          
       # 6. Собираем Debug APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon
 
       # 7. Собираем подписанный Release APK
       - name: Build Release APK
-        env:
-          KEYSTORE_PATH: ${{ github.workspace }}/release-key.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon
 
       # 8. Артефакт: Debug
